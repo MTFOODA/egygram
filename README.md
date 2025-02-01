@@ -1,3 +1,3 @@
-# flutter_application_3
+# Egygram
 
 A new Flutter project.
