@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "473002023956",
+    "firebase_url": "https://prevasive-fcis-default-rtdb.firebaseio.com",
+    "project_id": "prevasive-fcis",
+    "storage_bucket": "prevasive-fcis.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:473002023956:android:49884d0e50bacf23515b01",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_3"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTVg9L91j7txFsiD2UsXMtoSZjT6S4QWc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
