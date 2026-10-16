@@ -1,32 +1,34 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:async';
+
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/errors/error_mapper.dart';
+import '../../../../domain/repositories/reel_repository.dart';
 import '../../../models/reel_model.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'state.dart';
 
 class GetReelCubit extends Cubit<GetReelsState> {
-  GetReelCubit() : super(GetReelInitialState());
+  final ReelRepository _reelRepository;
+  StreamSubscription<List<ReelsModel>>? _subscription;
 
-  // Stream subscription to listen for real-time updates
-  Stream<List<ReelsModel>> getReelStream() {
-    return FirebaseFirestore.instance
-        .collection("Reels")
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => ReelsModel.fromMap(doc.data()))
-        .toList());
-  }
+  GetReelCubit({ReelRepository? reelRepository})
+      : _reelRepository = reelRepository ?? sl.reelRepository,
+        super(GetReelInitialState());
 
-  // Subscribe to snapshot changes
+  Stream<List<ReelsModel>> getReelStream() => _reelRepository.watchReels();
+
   void subscribeToReels() {
     emit(GetReelLoadingState());
-
-    getReelStream().listen(
-          (reels) {
-        emit(GetReelSuccessState(reels));
-      },
-      onError: (error) {
-        emit(GetReelErrorState(error.toString()));
-      },
+    _subscription?.cancel();
+    _subscription = getReelStream().listen(
+      (reels) => emit(GetReelSuccessState(reels)),
+      onError: (error) => emit(GetReelErrorState(friendlyError(error))),
     );
+  }
+
+  @override
+  Future<void> close() {
+    _subscription?.cancel();
+    return super.close();
   }
 }

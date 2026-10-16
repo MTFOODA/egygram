@@ -51,35 +51,41 @@ class SettingsScreenState extends State<SettingsScreen> {
           const Divider(),
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Text('Manage Egygram'.tr(),style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+            child: Text('Manage Egygram'.tr(),
+                style:
+                    isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
           ),
           ListTile(
             leading: const FaIcon(FontAwesomeIcons.bookmark),
-            title: Text('Saved'.tr(),style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+            title: Text('Saved'.tr(),
+                style:
+                    isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
             trailing: const Icon(Icons.arrow_forward_ios),
             onTap: () {
               Navigator.push(
                 context,
-                  MaterialPageRoute(builder: (context) => BlocProvider(
-                      create: (context) => GetUserCubit()..getUsers(),
-                      child: SavedPostsScreen(currentUser: widget.currentUser)
-                  )
-                ),
+                MaterialPageRoute(
+                    builder: (context) => BlocProvider(
+                        create: (context) => GetUserCubit()..getUsers(),
+                        child:
+                            SavedPostsScreen(currentUser: widget.currentUser))),
               );
             },
           ),
           ListTile(
             leading: const FaIcon(FontAwesomeIcons.heart),
-            title: Text('Loves'.tr(),style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+            title: Text('Loves'.tr(),
+                style:
+                    isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
             trailing: const Icon(Icons.arrow_forward_ios),
             onTap: () {
               Navigator.push(
                 context,
-                  MaterialPageRoute(builder: (context) => BlocProvider(
-                      create: (context) => GetUserCubit()..getUsers(),
-                      child: LovedPostsScreen(currentUser: widget.currentUser)
-                  )
-                ),
+                MaterialPageRoute(
+                    builder: (context) => BlocProvider(
+                        create: (context) => GetUserCubit()..getUsers(),
+                        child:
+                            LovedPostsScreen(currentUser: widget.currentUser))),
               );
             },
           ),

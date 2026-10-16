@@ -1,4 +1,4 @@
-import '../../../models/Story_model.dart';
+import '../../../models/story_model.dart';
 
 abstract class GetStoriesState {}
 

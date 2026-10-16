@@ -1,5 +1,4 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_3/screens/navigation_screen.dart';
@@ -11,6 +10,7 @@ import 'package:flutter_application_3/logics/auth/login_logic/state.dart';
 import 'package:flutter_application_3/utilities/fonts_dart.dart';
 import 'package:flutter_application_3/utilities/decoration.dart';
 import 'package:provider/provider.dart';
+import '../core/di/service_locator.dart';
 import '../utilities/theme_provider.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -34,6 +34,22 @@ class LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  /// Resolves the signed-in user's profile and caches their user name so the
+  /// rest of the UI (which keys off user name) works immediately.
+  Future<void> _cacheSignedInUserName() async {
+    try {
+      final userId = sl.authRepository.currentUserId;
+      if (userId == null) return;
+      final users = await sl.userRepository.watchUsers().first;
+      final match = users.where((u) => u.id == userId).toList();
+      if (match.isNotEmpty) {
+        await CacheHelper.saveData('user', match.first.userName);
+      }
+    } catch (_) {
+      // Non-fatal: navigation still works, profile lookups fall back to cache.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
@@ -42,16 +58,22 @@ class LoginScreenState extends State<LoginScreen> {
       create: (context) => LoginCubit(),
       child: Scaffold(
         body: BlocConsumer<LoginCubit, LoginState>(
-          listener: (context, state) {
+          listener: (context, state) async {
             if (state is LoginSuccessState) {
+              // Resolve + cache the user name BEFORE navigating so the
+              // navigation screen never receives a stale or null value.
+              await _cacheSignedInUserName();
+              final userName =
+                  (CacheHelper.getData('user') ?? user) as String? ?? '';
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Login is successful".tr())));
+                  SnackBar(content: Text("Login is successful".tr())));
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => NavigationScreen(initialIndex: 0, userName: user),
+                  builder: (context) =>
+                      NavigationScreen(initialIndex: 0, userName: userName),
                 ),
-                    (Route<dynamic> route) => false,
+                (Route<dynamic> route) => false,
               );
             } else if (state is LoginErrorState) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -70,13 +92,22 @@ class LoginScreenState extends State<LoginScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const SizedBox(height: 150),
-                        Text("Welcome Back!".tr(), style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold), // Conditional text style
+                        Text("Welcome Back!".tr(),
+                            style: isDarkMode
+                                ? AppFonts.textW24bold
+                                : AppFonts
+                                    .textB24bold), // Conditional text style
                         const SizedBox(height: 50),
                         TextFormField(
-                          style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold,  // Conditional text style
+                          style: isDarkMode
+                              ? AppFonts.textW24bold
+                              : AppFonts.textB24bold, // Conditional text style
                           controller: emailController,
                           keyboardType: TextInputType.emailAddress,
-                          decoration: emailInputDecoration(context,'Email'.tr(),const Icon(CupertinoIcons.mail_solid)),
+                          decoration: emailInputDecoration(
+                              context,
+                              'Email'.tr(),
+                              const Icon(CupertinoIcons.mail_solid)),
                           validator: (value) {
                             if (value!.isEmpty) {
                               return 'Please enter your email'.tr();
@@ -86,7 +117,9 @@ class LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 30),
                         TextFormField(
-                          style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold,  // Conditional text style
+                          style: isDarkMode
+                              ? AppFonts.textW24bold
+                              : AppFonts.textB24bold, // Conditional text style
                           controller: passwordController,
                           obscureText: obscurePassword,
                           keyboardType: TextInputType.visiblePassword,
@@ -94,7 +127,9 @@ class LoginScreenState extends State<LoginScreen> {
                             obscurePassword: obscurePassword,
                             onTogglePassword: togglePasswordVisibility,
                             iconPassword: iconPassword,
-                            labelText: 'Password'.tr(), context: context, prefixIcon: const Icon(CupertinoIcons.lock_fill),
+                            labelText: 'Password'.tr(),
+                            context: context,
+                            prefixIcon: const Icon(CupertinoIcons.lock_fill),
                           ),
                           validator: (value) {
                             if (value!.isEmpty) {
@@ -106,65 +141,18 @@ class LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 10),
                         InkWell(
                           onTap: () async {
-                            final email = emailController.text;
+                            final email = emailController.text.trim();
                             final password = passwordController.text;
 
                             if (formKey.currentState?.validate() ?? false) {
-                              try {
-                                // Always authenticate with Firebase
-                                final userCredential = await FirebaseAuth.instance
-                                    .signInWithEmailAndPassword(email: email, password: password);
-
-                                if (userCredential.user != null) {
-                                  // Save email and password to cache for auto-login
-                                  await CacheHelper.saveData('email', email);
-                                  await CacheHelper.saveData('password', password);
-
-                                  context.read<LoginCubit>().login(email, password);
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text("Login failed. Try again.".tr())),
-                                  );
-                                }
-                              } on FirebaseAuthException catch (e) {
-                                String errorMessage = "An error occurred".tr();
-                                if (e.code == 'user-not-found') {
-                                  errorMessage = "No user found with this email.".tr();
-                                } else if (e.code == 'wrong-password') {
-                                  errorMessage = "Invalid password.".tr();
-                                }
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(errorMessage)),
-                                );
-                              }
-                            }
-
-                            // Auto-login logic
-                            final cachedEmail = await CacheHelper.getData('email');
-                            final cachedPassword = await CacheHelper.getData('password');
-
-                            if (cachedEmail != null && cachedPassword != null) {
-                              // Validate cached credentials with Firebase
-                              try {
-                                final userCredential = await FirebaseAuth.instance
-                                    .signInWithEmailAndPassword(
-                                  email: cachedEmail,
-                                  password: cachedPassword,
-                                );
-
-                                if (userCredential.user != null) {
-                                  context.read<LoginCubit>().login(cachedEmail, cachedPassword);
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text("Auto-login failed. Please log in manually.".tr())),
-                                  );
-                                }
-                              } on FirebaseAuthException catch (_) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("Auto-login failed. Please log in manually.".tr())),
-                                );
-                              }
+                              // Supabase persists the session automatically, so
+                              // there is no need to cache the password. Only the
+                              // non-secret user name is cached for the UI (the
+                              // BlocConsumer listener resolves it on success).
+                              await CacheHelper.saveData('email', email);
+                              await context
+                                  .read<LoginCubit>()
+                                  .login(email, password);
                             }
                           },
                           child: Container(
@@ -172,7 +160,9 @@ class LoginScreenState extends State<LoginScreen> {
                             height: 50,
                             decoration: customContainerDecoration(),
                             child: Center(
-                              child: Text("Login".tr(), style:AppFonts.textW24bold),  // Conditional text style
+                              child: Text("Login".tr(),
+                                  style: AppFonts
+                                      .textW24bold), // Conditional text style
                             ),
                           ),
                         ),
@@ -181,12 +171,16 @@ class LoginScreenState extends State<LoginScreen> {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const SignupScreen()),
+                              MaterialPageRoute(
+                                  builder: (context) => const SignupScreen()),
                             );
                           },
                           child: Text(
                             'Don\'t have an account? Sign Up'.tr(),
-                            style: isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold,  // Conditional text style
+                            style: isDarkMode
+                                ? AppFonts.textW16bold
+                                : AppFonts
+                                    .textB16bold, // Conditional text style
                           ),
                         ),
                       ],

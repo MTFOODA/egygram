@@ -1,31 +1,24 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/errors/error_mapper.dart';
+import '../../../../domain/repositories/social_repository.dart';
 import '../../../models/follow_model.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'state.dart';
 
 class CreateFollowCubit extends Cubit<CreateFollowStates> {
-  CreateFollowCubit() : super(CreateFollowInitialStates());
+  final SocialRepository _socialRepository;
+
+  CreateFollowCubit({SocialRepository? socialRepository})
+      : _socialRepository = socialRepository ?? sl.socialRepository,
+        super(CreateFollowInitialStates());
 
   Future<void> toggleFollow(FollowsModel follows) async {
     emit(CreateFollowLoadingStates());
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('Follows')
-          .where('userFollowed', isEqualTo: follows.userFollowed)
-          .where('userName', isEqualTo: follows.userName)
-          .get();
-
-      if (snapshot.docs.isEmpty) {
-        await FirebaseFirestore.instance.collection('Follows').add(follows.toMap());
-      } else {
-        await FirebaseFirestore.instance
-            .collection('Follows')
-            .doc(snapshot.docs.first.id)
-            .delete();
-      }
+      await _socialRepository.toggleFollow(follows);
       emit(CreateFollowSuccessStates());
     } catch (e) {
-      emit(CreateFollowErrorStates(e.toString()));
+      emit(CreateFollowErrorStates(friendlyError(e)));
     }
   }
 }

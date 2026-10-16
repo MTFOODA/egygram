@@ -1,7 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../models/Story_model.dart';
+import '../../models/story_model.dart';
 import '../../utilities/fonts_dart.dart';
 
 class TopRowWidget extends StatelessWidget {
@@ -35,7 +35,8 @@ class TopRowWidget extends StatelessWidget {
             radius: 20.0,
             backgroundImage: story.profileImage!.isNotEmpty
                 ? NetworkImage(story.profileImage!)
-                : const AssetImage('assets/images/profile_picture.jpg') as ImageProvider,
+                : const AssetImage('assets/images/profile_picture.jpg')
+                    as ImageProvider,
             backgroundColor: const Color(0xFFFFF4F4),
           ),
           const SizedBox(width: 10),
@@ -43,9 +44,9 @@ class TopRowWidget extends StatelessWidget {
               style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
           const SizedBox(width: 10),
           Text(
-              "${story.time!.hour}:"
-                  "${story.time!.minute.toString().padLeft(2, '0')}"
-                  "${story.time!.hour >= 12 ? " PM" : " AM"}",
+              "${story.time.hour}:"
+              "${story.time.minute.toString().padLeft(2, '0')}"
+              "${story.time.hour >= 12 ? " PM" : " AM"}",
               style: isDarkMode ? AppFonts.textW11bold : AppFonts.textB11bold),
           const Spacer(),
           if (currentUser == story.userName)
@@ -58,7 +59,8 @@ class TopRowWidget extends StatelessWidget {
                     context: context,
                     builder: (context) => AlertDialog(
                       title: Text("Delete Post".tr()),
-                      content: Text("Are you sure you want to delete this story ?".tr()),
+                      content: Text(
+                          "Are you sure you want to delete this story ?".tr()),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context, false),
@@ -81,7 +83,9 @@ class TopRowWidget extends StatelessWidget {
                 PopupMenuItem<String>(
                   value: 'delete',
                   child: Text('Delete'.tr(),
-                      style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                      style: isDarkMode
+                          ? AppFonts.textW14bold
+                          : AppFonts.textB14bold),
                 ),
               ],
             ),

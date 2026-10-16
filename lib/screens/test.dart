@@ -12,16 +12,10 @@ class NotificationTestState extends State<NotificationTest> {
   final NotificationService notificationService = NotificationService();
 
   @override
-  void initState() {
-    super.initState();
-    notificationService.init();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Egygram Notification Test"),
+        title: const Text("EgyGram Notification Test"),
       ),
       body: Center(
         child: Column(
@@ -29,27 +23,33 @@ class NotificationTestState extends State<NotificationTest> {
           children: [
             ElevatedButton(
               onPressed: () {
-                notificationService.sendNotification(
-                  "TOKEN_1",
-                  "Message Body for Notification 1",
+                notificationService.notify(
+                  targetUserName: "TARGET_USER",
+                  actorName: "tester",
+                  type: 'test',
+                  body: "Message Body for Notification 1",
                 );
               },
               child: const Text("Send Notification 1"),
             ),
             ElevatedButton(
               onPressed: () {
-                notificationService.sendNotification(
-                  "TOKEN_2",
-                  "Message Body for Notification 2",
+                notificationService.notify(
+                  targetUserName: "TARGET_USER",
+                  actorName: "tester",
+                  type: 'test',
+                  body: "Message Body for Notification 2",
                 );
               },
               child: const Text("Send Notification 2"),
             ),
             ElevatedButton(
               onPressed: () {
-                notificationService.sendNotification(
-                  "TOKEN_3",
-                  "Message Body for Notification 3",
+                notificationService.notify(
+                  targetUserName: "TARGET_USER",
+                  actorName: "tester",
+                  type: 'test',
+                  body: "Message Body for Notification 3",
                 );
               },
               child: const Text("Send Notification 3"),

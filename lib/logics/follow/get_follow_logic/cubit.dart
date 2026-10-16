@@ -1,41 +1,31 @@
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/errors/error_mapper.dart';
+import '../../../../domain/repositories/social_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../models/follow_model.dart';
 import 'state.dart';
 
 class GetFollowCubit extends Cubit<GetFollowsState> {
-  GetFollowCubit() : super(GetFollowInitialState());
+  final SocialRepository _socialRepository;
 
-  // Fetch all Follows for a specific user
+  GetFollowCubit({SocialRepository? socialRepository})
+      : _socialRepository = socialRepository ?? sl.socialRepository,
+        super(GetFollowInitialState());
+
   Future<void> getFollows(String userName) async {
     emit(GetFollowLoadingState());
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('Follows')
-          .where('userName', isEqualTo: userName)
-          .get();
-
-      final follows = snapshot.docs
-          .map((doc) => FollowsModel.fromMap(doc.data()))
-          .toList();
-
+      final follows = await _socialRepository.getFollows(userName);
       emit(GetFollowSuccessState(follows: follows));
     } catch (e) {
-      emit(GetFollowErrorState('Failed to fetch Follows: $e'));
+      emit(GetFollowErrorState(friendlyError(e)));
     }
   }
 
   Future<bool> getFollowStatus(String userFollowed, String userName) async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('Follows')
-          .where('userFollowed', isEqualTo: userFollowed)
-          .where('userName', isEqualTo: userName)
-          .get();
-
-      return snapshot.docs.isNotEmpty;
+      return await _socialRepository.getFollowStatus(userFollowed, userName);
     } catch (e) {
-      throw Exception("Failed to fetch Follow status: $e");
+      throw Exception(friendlyError(e));
     }
   }
 }

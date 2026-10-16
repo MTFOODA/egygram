@@ -1,6 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../core/utils/date_parser.dart';
 
+/// Domain model for a comment, mapped to the `comments` table.
 class CommentsModel {
+  final String? id;
   String userName;
   final String? profileImage;
   String postId;
@@ -8,6 +10,7 @@ class CommentsModel {
   final DateTime time;
 
   CommentsModel({
+    this.id,
     required this.userName,
     this.profileImage,
     required this.postId,
@@ -15,29 +18,26 @@ class CommentsModel {
     required this.time,
   });
 
-  // Convert model to map
   Map<String, dynamic> toMap() {
     return {
-      'userName': userName,
-      "profileImage": profileImage,
-      'postId': postId,
+      if (id != null) 'id': id,
+      'user_name': userName,
+      "profile_image": profileImage,
+      'post_id': postId,
       'content': content,
-      "createdAt": time.toIso8601String(),
+      "created_at": time.toIso8601String(),
     };
   }
 
-  // Create model from map
   factory CommentsModel.fromMap(Map<String, dynamic> map) {
     return CommentsModel(
-      userName: map['userName'],
-      profileImage: map["profileImage"] ?? "",
-      postId: map['postId'],
-      content: map['content'],
-      time: map["createdAt"] is Timestamp
-          ? (map["createdAt"] as Timestamp).toDate()
-          : map["createdAt"] != null
-          ? DateTime.parse(map["createdAt"])
-          : DateTime.now(),
+      id: map['id'] as String?,
+      userName: (map['user_name'] ?? map['userName'] ?? '') as String,
+      profileImage:
+          (map["profile_image"] ?? map["profileImage"] ?? "") as String?,
+      postId: (map['post_id'] ?? map['postId'] ?? '') as String,
+      content: (map['content'] ?? '') as String,
+      time: parseDate(map["created_at"] ?? map["createdAt"]),
     );
   }
 }

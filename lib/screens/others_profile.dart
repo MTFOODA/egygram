@@ -12,7 +12,8 @@ import '../widgets/profile/tapBar_widget.dart';
 class OthersProfilePage extends StatefulWidget {
   final String currentUser;
   final String passedUser;
-  const OthersProfilePage({super.key, required this.currentUser, required this.passedUser});
+  const OthersProfilePage(
+      {super.key, required this.currentUser, required this.passedUser});
 
   @override
   OthersProfilePageState createState() => OthersProfilePageState();
@@ -46,7 +47,7 @@ class OthersProfilePageState extends State<OthersProfilePage>
 
   @override
   Widget build(BuildContext context) {
-    return  BlocProvider(
+    return BlocProvider(
       create: (context) => GetUserCubit()..getUsers(),
       child: Scaffold(
         appBar: AppBar(title: Text(widget.passedUser)),

@@ -4,7 +4,7 @@ Widget buildGridView() {
   // Sample images
   final List<String> images = List.generate(
     9,
-        (index) => ('assets/images/profile_picture.jpg'),
+    (index) => ('assets/images/profile_picture.jpg'),
   );
 
   return GridView.builder(

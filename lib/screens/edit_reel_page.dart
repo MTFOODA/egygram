@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:lottie/lottie.dart'; // Import Lottie
 import 'dart:io';
 
-import '../../../models/reel_model.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/di/service_locator.dart';
+import '../../../core/utils/media_upload_helper.dart';
+import '../../models/reel_model.dart';
 import '../logics/reel/edit_reel_logic/cubit.dart';
 import '../logics/reel/edit_reel_logic/state.dart';
 import '../utilities/colors_dart.dart';
@@ -30,11 +32,13 @@ class EditReelPageState extends State<EditReelPage> {
   @override
   void initState() {
     super.initState();
-    descriptionController = TextEditingController(text: widget.reelModel.description);
-    videoController = VideoPlayerController.networkUrl(Uri.parse(widget.reelModel.video))
-      ..initialize().then((_) {
-        setState(() {});
-      });
+    descriptionController =
+        TextEditingController(text: widget.reelModel.description);
+    videoController =
+        VideoPlayerController.networkUrl(Uri.parse(widget.reelModel.video))
+          ..initialize().then((_) {
+            setState(() {});
+          });
   }
 
   @override
@@ -45,7 +49,8 @@ class EditReelPageState extends State<EditReelPage> {
   }
 
   Future<void> pickVideo() async {
-    final XFile? videoFile = await picker.pickVideo(source: ImageSource.gallery);
+    final XFile? videoFile =
+        await picker.pickVideo(source: ImageSource.gallery);
     if (videoFile != null) {
       setState(() {
         newVideoFile = File(videoFile.path);
@@ -59,12 +64,15 @@ class EditReelPageState extends State<EditReelPage> {
 
   Future<String?> _uploadVideo(File videoFile) async {
     try {
-      final storageRef = FirebaseStorage.instance
-          .ref()
-          .child('reels/${DateTime.now().millisecondsSinceEpoch}.mp4');
-      await storageRef.putFile(videoFile);
-      return await storageRef.getDownloadURL();
+      return await sl.storageRepository.uploadFile(
+        file: videoFile,
+        folder: StorageBuckets.reelsFolder,
+        owner: widget.reelModel.userName,
+        fileName:
+            '${DateTime.now().millisecondsSinceEpoch}_${MediaUploadHelper.newId()}.mp4',
+      );
     } catch (e) {
+      if (!mounted) return null;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to upload video: $e")),
       );
@@ -93,7 +101,9 @@ class EditReelPageState extends State<EditReelPage> {
         return;
       }
     }
-    context.read<EditReelCubit>().editReel(widget.reelModel.reelID, updatedReel);
+    context
+        .read<EditReelCubit>()
+        .editReel(widget.reelModel.reelID, updatedReel);
   }
 
   @override
@@ -121,7 +131,8 @@ class EditReelPageState extends State<EditReelPage> {
           ),
         ],
       ),
-      body: SingleChildScrollView( // Wrap the entire body in a SingleChildScrollView
+      body: SingleChildScrollView(
+        // Wrap the entire body in a SingleChildScrollView
         child: Stack(
           children: [
             Padding(
@@ -152,7 +163,8 @@ class EditReelPageState extends State<EditReelPage> {
                     listener: (context, state) {
                       if (state is EditReelSuccessState) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Reel updated successfully!")),
+                          const SnackBar(
+                              content: Text("Reel updated successfully!")),
                         );
                       } else if (state is EditReelErrorState) {
                         ScaffoldMessenger.of(context).showSnackBar(

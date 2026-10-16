@@ -33,7 +33,7 @@ class SearchPageState extends State<SearchPage> {
       } else {
         filteredUsers = users
             .where((user) =>
-            user['userName']!.toLowerCase().contains(query.toLowerCase()))
+                user['userName']!.toLowerCase().contains(query.toLowerCase()))
             .toList();
       }
     });
@@ -92,11 +92,12 @@ class SearchPageState extends State<SearchPage> {
                         setState(() {
                           users = state.users
                               .map((user) => {
-                            'userName': user.userName,
-                            'profileImage': user.profileImage ??
-                                'assets/images/profile_picture.jpg',
-                          })
-                              .where((user) => user['userName'] != widget.currentUser)
+                                    'userName': user.userName,
+                                    'profileImage': user.profileImage ??
+                                        'assets/images/profile_picture.jpg',
+                                  })
+                              .where((user) =>
+                                  user['userName'] != widget.currentUser)
                               .toList();
                           filteredUsers = users;
                         });
@@ -110,43 +111,45 @@ class SearchPageState extends State<SearchPage> {
                     },
                     child: filteredUsers.isNotEmpty
                         ? ListView.builder(
-                      itemCount: filteredUsers.length,
-                      itemBuilder: (context, index) {
-                        final user = filteredUsers[index];
-                        return Card(
-                          elevation: 5,
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundImage: user['profileImage']!
-                                  .startsWith('http')
-                                  ? NetworkImage(user['profileImage']!)
-                                  : AssetImage(user['profileImage']!)
-                              as ImageProvider,
-                            ),
-                            title: Text(user['userName']!,style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => OthersProfilePage(
-                                    currentUser: widget.currentUser,
-                                    passedUser: user['userName']!,
+                            itemCount: filteredUsers.length,
+                            itemBuilder: (context, index) {
+                              final user = filteredUsers[index];
+                              return Card(
+                                elevation: 5,
+                                margin: const EdgeInsets.symmetric(vertical: 8),
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundImage: user['profileImage']!
+                                            .startsWith('http')
+                                        ? NetworkImage(user['profileImage']!)
+                                        : AssetImage(user['profileImage']!)
+                                            as ImageProvider,
                                   ),
+                                  title: Text(user['userName']!,
+                                      style: isDarkMode
+                                          ? AppFonts.textW24bold
+                                          : AppFonts.textB24bold),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => OthersProfilePage(
+                                          currentUser: widget.currentUser,
+                                          passedUser: user['userName']!,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
                               );
                             },
-                          ),
-                        );
-                      },
-                    )
+                          )
                         : Center(
-                      child: Text(
-                        'User not found'.tr(),
-                          style: isDarkMode
-                              ? AppFonts.textW24bold : AppFonts.textB24bold
-                      ),
-                    ),
+                            child: Text('User not found'.tr(),
+                                style: isDarkMode
+                                    ? AppFonts.textW24bold
+                                    : AppFonts.textB24bold),
+                          ),
                   ),
                 ),
               ),

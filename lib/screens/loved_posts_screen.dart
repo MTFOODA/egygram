@@ -29,7 +29,8 @@ class LovedPostsScreen extends StatelessWidget {
       ),
       body: MultiBlocProvider(
         providers: [
-          BlocProvider(create: (context) => GetLoveCubit()..getLoves(currentUser)),
+          BlocProvider(
+              create: (context) => GetLoveCubit()..getLoves(currentUser)),
           BlocProvider(create: (context) => GetPostCubit()..subscribeToPosts()),
           BlocProvider(create: (context) => GetSaveCubit()),
           BlocProvider(create: (context) => CreateLoveCubit()),
@@ -46,11 +47,15 @@ class LovedPostsScreen extends StatelessWidget {
 
               if (currentUserLoves.isEmpty) {
                 return Center(
-                  child: Text('No Loved posts found'.tr(),style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+                  child: Text('No Loved posts found'.tr(),
+                      style: isDarkMode
+                          ? AppFonts.textW24bold
+                          : AppFonts.textB24bold),
                 );
               }
 
-              final lovedPostIds = currentUserLoves.map((love) => love.postId).toList();
+              final lovedPostIds =
+                  currentUserLoves.map((love) => love.postId).toList();
               final postIdsText = lovedPostIds.join(' , ');
 
               return BlocBuilder<GetPostCubit, GetPostsState>(
@@ -88,7 +93,9 @@ class LovedPostsScreen extends StatelessWidget {
                   } else {
                     return Center(
                       child: Text('No posts found'.tr(),
-                          style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+                          style: isDarkMode
+                              ? AppFonts.textW24bold
+                              : AppFonts.textB24bold),
                     );
                   }
                 },

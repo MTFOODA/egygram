@@ -1,12 +1,12 @@
-import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_3/models/post_model.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
+import '../core/constants/app_constants.dart';
+import '../core/utils/media_upload_helper.dart';
 import '../logics/post/edit_post_logic/cubit.dart';
 import '../logics/post/edit_post_logic/state.dart';
 import '../utilities/fonts_dart.dart';
@@ -30,8 +30,11 @@ class EditPostPageState extends State<EditPostPage> {
   @override
   void initState() {
     super.initState();
-    descriptionController = TextEditingController(text: widget.postModel.description);
-    currentImageUrls = widget.postModel.imageUrls.isNotEmpty ? List.from(widget.postModel.imageUrls) : [];
+    descriptionController =
+        TextEditingController(text: widget.postModel.description);
+    currentImageUrls = widget.postModel.imageUrls.isNotEmpty
+        ? List.from(widget.postModel.imageUrls)
+        : [];
   }
 
   Future<void> selectPostImages() async {
@@ -39,7 +42,8 @@ class EditPostPageState extends State<EditPostPage> {
     try {
       final pickedMedia = await picker.pickMultipleMedia();
       if (pickedMedia.isNotEmpty) {
-        List<String> uploadedUrls = await uploadPostImages(pickedMedia, widget.postModel.userName);
+        List<String> uploadedUrls =
+            await uploadPostImages(pickedMedia, widget.postModel.userName);
         setState(() {
           currentImageUrls.addAll(uploadedUrls);
         });
@@ -49,26 +53,12 @@ class EditPostPageState extends State<EditPostPage> {
     }
   }
 
-  Future<List<String>> uploadPostImages(List<XFile> images, String userName) async {
-    List<String> imageUrls = [];
-    try {
-      for (XFile image in images) {
-        final isVideo = image.mimeType?.startsWith('video') ?? false;
-        final extension = isVideo ? '.mp4' : '.jpg';
-        final mediaTypeFolder = isVideo ? "videos" : "images";
-
-        final storageRef = FirebaseStorage.instance
-            .ref()
-            .child("Posts/$userName/$mediaTypeFolder/${DateTime.now().millisecondsSinceEpoch}$extension");
-
-        await storageRef.putFile(File(image.path));
-        String mediaUrl = await storageRef.getDownloadURL();
-        imageUrls.add(mediaUrl);
-      }
-    } catch (e) {
-      debugPrint("Upload Error: $e");
-    }
-    return imageUrls;
+  Future<List<String>> uploadPostImages(List<XFile> images, String userName) {
+    return MediaUploadHelper.uploadMedia(
+      files: images,
+      folder: StorageBuckets.postsFolder,
+      owner: userName,
+    );
   }
 
   void removeImage(String imageUrl) {
@@ -88,10 +78,13 @@ class EditPostPageState extends State<EditPostPage> {
       userName: widget.postModel.userName,
       time: widget.postModel.time,
       description: descriptionController.text,
-      imageUrls: currentImageUrls.isNotEmpty ? currentImageUrls : widget.postModel.imageUrls,
+      imageUrls: currentImageUrls.isNotEmpty
+          ? currentImageUrls
+          : widget.postModel.imageUrls,
     );
 
-    await BlocProvider.of<EditPostCubit>(context).editPost(widget.postModel.postID, updatedPost);
+    await BlocProvider.of<EditPostCubit>(context)
+        .editPost(widget.postModel.postID, updatedPost);
 
     final state = BlocProvider.of<EditPostCubit>(context).state;
 
@@ -112,7 +105,7 @@ class EditPostPageState extends State<EditPostPage> {
             userName: widget.postModel.userName,
           ),
         ),
-            (Route<dynamic> route) => false,
+        (Route<dynamic> route) => false,
       );
     } else if (state is EditPostErrorState) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -133,7 +126,8 @@ class EditPostPageState extends State<EditPostPage> {
             Navigator.pop(context);
           },
         ),
-        title: Text('Edit Post'.tr(), style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+        title: Text('Edit Post'.tr(),
+            style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
         actions: [
           TextButton(
             onPressed: () => editPost(context),
@@ -191,7 +185,8 @@ class EditPostPageState extends State<EditPostPage> {
                                   child: const CircleAvatar(
                                     radius: 15,
                                     backgroundColor: Colors.red,
-                                    child: Icon(Icons.delete, color: Colors.white, size: 20),
+                                    child: Icon(Icons.delete,
+                                        color: Colors.white, size: 20),
                                   ),
                                 ),
                               ),
@@ -205,7 +200,8 @@ class EditPostPageState extends State<EditPostPage> {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: selectPostImages,
-                child: Text('Add Images'.tr()),  // Changed the text to reflect multiple images
+                child: Text('Add Images'
+                    .tr()), // Changed the text to reflect multiple images
               ),
               const SizedBox(height: 16),
               TextFormField(

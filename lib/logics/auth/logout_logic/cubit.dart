@@ -1,18 +1,23 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/errors/error_mapper.dart';
+import '../../../../domain/repositories/auth_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_application_3/logics/auth/logout_logic/state.dart';
+import 'state.dart';
 
 class LogoutCubit extends Cubit<LogoutState> {
-  LogoutCubit() : super(LogoutInitialState());
+  final AuthRepository _authRepository;
 
-  // Logout function
+  LogoutCubit({AuthRepository? authRepository})
+      : _authRepository = authRepository ?? sl.authRepository,
+        super(LogoutInitialState());
+
   Future logout() async {
     emit(LogoutLoadingState());
     try {
-      await FirebaseAuth.instance.signOut();
+      await _authRepository.signOut();
       emit(LogoutSuccessState());
     } catch (e) {
-      emit(LogoutErrorState(e.toString()));
+      emit(LogoutErrorState(friendlyError(e)));
     }
   }
 }

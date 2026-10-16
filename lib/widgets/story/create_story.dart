@@ -1,9 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_3/widgets/story/create_story_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/utils/media_upload_helper.dart';
 import '../../logics/story/create_story_logic/cubit.dart';
 import '../../logics/story/create_story_logic/state.dart';
 import '../../models/story_model.dart';
@@ -16,7 +16,7 @@ class CreateStory extends StatelessWidget {
   final String userName;
   final Future<void> Function() onMediaPick;
   final Future<List<String>> Function(List<XFile>, String userName)
-  uploadStoryMedias;
+      uploadStoryMedias;
 
   const CreateStory({
     required this.storyDescriptionController,
@@ -41,11 +41,10 @@ class CreateStory extends StatelessWidget {
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(
-                builder: (context) => NavigationScreen(
-                    initialIndex: 0,
-                    userName: userName),
+                builder: (context) =>
+                    NavigationScreen(initialIndex: 0, userName: userName),
               ),
-                  (Route<dynamic> route) => false,
+              (Route<dynamic> route) => false,
             );
           } else if (state is CreateStoryErrorStates) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -64,7 +63,7 @@ class CreateStory extends StatelessWidget {
 
                 if (selectedStoryMedias.isNotEmpty) {
                   List<String> storyURIs =
-                  await uploadStoryMedias(selectedStoryMedias, userName);
+                      await uploadStoryMedias(selectedStoryMedias, userName);
                   imageUrls = storyURIs.join(',');
 
                   String extension = selectedStoryMedias.first.path
@@ -80,8 +79,7 @@ class CreateStory extends StatelessWidget {
                   type = 'text';
                 }
 
-                String storyId =
-                    FirebaseFirestore.instance.collection('Stories').doc().id;
+                String storyId = MediaUploadHelper.newId();
 
                 StoriesModel story = StoriesModel(
                   storyID: storyId,

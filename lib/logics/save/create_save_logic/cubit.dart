@@ -1,33 +1,24 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/errors/error_mapper.dart';
+import '../../../../domain/repositories/social_repository.dart';
 import '../../../models/save_model.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'state.dart';
 
 class CreateSaveCubit extends Cubit<CreateSaveStates> {
-  CreateSaveCubit() : super(CreateSaveInitialStates());
+  final SocialRepository _socialRepository;
+
+  CreateSaveCubit({SocialRepository? socialRepository})
+      : _socialRepository = socialRepository ?? sl.socialRepository,
+        super(CreateSaveInitialStates());
 
   Future<void> toggleSave(SavesModel saves) async {
     emit(CreateSaveLoadingStates());
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('Saves')
-          .where('postId', isEqualTo: saves.postId)
-          .where('userName', isEqualTo: saves.userName)
-          .get();
-
-      if (snapshot.docs.isEmpty) {
-        // Add love
-        await FirebaseFirestore.instance.collection('Saves').add(saves.toMap());
-      } else {
-        // Remove love
-        await FirebaseFirestore.instance
-            .collection('Saves')
-            .doc(snapshot.docs.first.id)
-            .delete();
-      }
+      await _socialRepository.toggleSave(saves);
       emit(CreateSaveSuccessStates());
     } catch (e) {
-      emit(CreateSaveErrorStates(e.toString()));
+      emit(CreateSaveErrorStates(friendlyError(e)));
     }
   }
 }

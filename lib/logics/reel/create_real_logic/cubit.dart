@@ -1,22 +1,24 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/errors/error_mapper.dart';
+import '../../../../domain/repositories/reel_repository.dart';
 import '../../../models/reel_model.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'state.dart';
 
 class CreateReelCubit extends Cubit<CreateReelStates> {
-  CreateReelCubit() : super(CreateReelInitialStates());
+  final ReelRepository _reelRepository;
 
-  // create Post
+  CreateReelCubit({ReelRepository? reelRepository})
+      : _reelRepository = reelRepository ?? sl.reelRepository,
+        super(CreateReelInitialStates());
+
   Future<void> createReel(ReelsModel reels) async {
     emit(CreateReelLoadingStates());
     try {
-      await FirebaseFirestore.instance
-          .collection("Reels")
-          .doc(reels.reelID)
-          .set(reels.toMap());
+      await _reelRepository.createReel(reels);
       emit(CreateReelSuccessStates());
     } catch (e) {
-      emit(CreateReelErrorStates(e.toString()));
+      emit(CreateReelErrorStates(friendlyError(e)));
     }
   }
 }

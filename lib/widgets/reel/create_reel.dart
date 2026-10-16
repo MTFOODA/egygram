@@ -1,10 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_3/models/reel_model.dart';
 import 'package:flutter_application_3/widgets/reel/create_reel_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/utils/media_upload_helper.dart';
 import '../../logics/reel/create_real_logic/cubit.dart';
 import '../../logics/reel/create_real_logic/state.dart';
 import '../../screens/navigation_screen.dart';
@@ -40,9 +40,12 @@ class CreateReel extends StatelessWidget {
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(
-                builder: (context) => NavigationScreen(initialIndex: 0,userName: userName!,),
+                builder: (context) => NavigationScreen(
+                  initialIndex: 0,
+                  userName: userName!,
+                ),
               ),
-                  (Route<dynamic> route) => false,
+              (Route<dynamic> route) => false,
             );
           } else if (state is CreateReelErrorStates) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -56,18 +59,19 @@ class CreateReel extends StatelessWidget {
             selectedVideo: selectedReelVideo,
             onVideoPick: onVideoPick,
             onReelCreate: () async {
-              String reelId = FirebaseFirestore.instance.collection('Reels').doc().id;
+              String reelId = MediaUploadHelper.newId();
               if (userName != null) {
-                final videoUrl = await uploadReelVideo(selectedReelVideo!, userName!);
+                final videoUrl =
+                    await uploadReelVideo(selectedReelVideo!, userName!);
 
                 context.read<CreateReelCubit>().createReel(ReelsModel(
-                  reelID: reelId,
-                  description: reelDescriptionController.text,
-                  profileImage: profileImage,
-                  userName: userName!,
-                  time: DateTime.now(),
-                  video: videoUrl!,
-                ));
+                      reelID: reelId,
+                      description: reelDescriptionController.text,
+                      profileImage: profileImage,
+                      userName: userName!,
+                      time: DateTime.now(),
+                      video: videoUrl!,
+                    ));
               }
             },
           );

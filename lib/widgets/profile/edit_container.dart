@@ -31,7 +31,7 @@ class EditProfileWidgetState extends State<EditProfileWidget> {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
 
     return SizedBox(
-      child:Padding(
+      child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
@@ -45,11 +45,12 @@ class EditProfileWidgetState extends State<EditProfileWidget> {
                       final state = context.read<GetUserCubit>().state;
                       if (state is GetUserSuccessState) {
                         final user = state.users.firstWhere(
-                              (user) => user.userName == widget.currentUser,
+                          (user) => user.userName == widget.currentUser,
                           orElse: () => UsersModel.defaultUser(),
                         );
 
-                        if (user.userName != UsersModel.defaultUser().userName) {
+                        if (user.userName !=
+                            UsersModel.defaultUser().userName) {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -74,12 +75,15 @@ class EditProfileWidgetState extends State<EditProfileWidget> {
                         );
                       }
                     },
-                    child: Text(
-                      'Edit Profile'.tr(), style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+                    child: Text('Edit Profile'.tr(),
+                        style: isDarkMode
+                            ? AppFonts.textW24bold
+                            : AppFonts.textB24bold),
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.person, color: Colors.black),
+                  icon: Icon(Icons.person,
+                      color: isDarkMode ? Colors.white : Colors.black),
                   onPressed: () {
                     //TODO Additional action if needed
                   },

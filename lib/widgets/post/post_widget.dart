@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_3/models/post_model.dart';
@@ -8,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../core/di/service_locator.dart';
 import '../../logics/love/create_love_logic/cubit.dart';
 import '../../logics/love/get_love_logic/cubit.dart';
 import '../../logics/post/edit_post_logic/cubit.dart';
@@ -36,7 +36,6 @@ class PostWidgetState extends State<PostWidget> {
   late PostsModel post;
   bool isLoved = false;
   bool isSaved = false;
-  final CollectionReference postsCollection = FirebaseFirestore.instance.collection('Posts');
   final NotificationService notificationService = NotificationService();
 
   @override
@@ -44,22 +43,11 @@ class PostWidgetState extends State<PostWidget> {
     super.initState();
     post = widget.posts;
 
-    FirebaseFirestore.instance
-        .collection('Posts')
-        .doc(post.postID)
-        .get()
-        .then((snapshot) {
-      if (snapshot.exists) {
-        setState(() {
-          widget.posts.loves = snapshot.data()?['loves'] ?? 0;
-        });
-      }
-    });
-
     context
         .read<GetLoveCubit>()
         .getLoveStatus(post.postID, widget.currentUser)
         .then((status) {
+      if (!mounted) return;
       setState(() {
         isLoved = status;
       });
@@ -69,6 +57,7 @@ class PostWidgetState extends State<PostWidget> {
         .read<GetSaveCubit>()
         .getSaveStatus(post.postID, widget.currentUser)
         .then((status) {
+      if (!mounted) return;
       setState(() {
         isSaved = status;
       });
@@ -77,12 +66,14 @@ class PostWidgetState extends State<PostWidget> {
 
   Future<void> deletePost(String postID) async {
     try {
-      await FirebaseFirestore.instance.collection('Posts').doc(postID).delete();
+      await sl.postRepository.deletePost(postID);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Post deleted successfully")),
       );
       setState(() {});
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to delete post: $e")),
       );
@@ -133,7 +124,7 @@ class PostWidgetState extends State<PostWidget> {
                             backgroundImage: widget.posts.profileImage != null
                                 ? NetworkImage(widget.posts.profileImage!)
                                 : const AssetImage(
-                                "assets/images/profile_picture.jpg"),
+                                    "assets/images/profile_picture.jpg"),
                             backgroundColor: const Color(0xFFFFF4F4),
                           ),
                           Positioned(
@@ -159,13 +150,17 @@ class PostWidgetState extends State<PostWidget> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.posts.userName, style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+                        Text(widget.posts.userName,
+                            style: isDarkMode
+                                ? AppFonts.textW24bold
+                                : AppFonts.textB24bold),
                         Padding(
                           padding: const EdgeInsets.only(left: 15),
                           child: Text(
-                            "${widget.posts.time.hour}:${widget.posts.time.minute}${widget.posts.time.hour >= 12 ? " PM" : " AM"}",
-                              style: isDarkMode ? AppFonts.textW11bold : AppFonts.textB11bold
-                          ),
+                              "${widget.posts.time.hour}:${widget.posts.time.minute}${widget.posts.time.hour >= 12 ? " PM" : " AM"}",
+                              style: isDarkMode
+                                  ? AppFonts.textW11bold
+                                  : AppFonts.textB11bold),
                         ),
                       ],
                     ),
@@ -173,12 +168,12 @@ class PostWidgetState extends State<PostWidget> {
                     if (widget.currentUser == widget.posts.userName)
                       PopupMenuButton<String>(
                         icon: const FaIcon(
-                            FontAwesomeIcons.ellipsis,
-                            size: 25,
+                          FontAwesomeIcons.ellipsis,
+                          size: 25,
                         ),
                         onSelected: (String value) async {
                           if (value == 'edit') {
-                               Navigator.push(
+                            Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => BlocProvider(
@@ -194,14 +189,18 @@ class PostWidgetState extends State<PostWidget> {
                               context: context,
                               builder: (context) => AlertDialog(
                                 title: Text("Delete Post".tr()),
-                                content: Text("Are you sure you want to delete this post?".tr()),
+                                content: Text(
+                                    "Are you sure you want to delete this post?"
+                                        .tr()),
                                 actions: [
                                   TextButton(
-                                    onPressed: () => Navigator.pop(context, false),
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
                                     child: Text("Cancel".tr()),
                                   ),
                                   TextButton(
-                                    onPressed: () => Navigator.pop(context, true),
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
                                     child: Text("Delete".tr()),
                                   ),
                                 ],
@@ -213,14 +212,21 @@ class PostWidgetState extends State<PostWidget> {
                             }
                           }
                         },
-                        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                        itemBuilder: (BuildContext context) =>
+                            <PopupMenuEntry<String>>[
                           PopupMenuItem<String>(
                             value: 'edit',
-                            child: Text('Edit'.tr(), style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                            child: Text('Edit'.tr(),
+                                style: isDarkMode
+                                    ? AppFonts.textW14bold
+                                    : AppFonts.textB14bold),
                           ),
                           PopupMenuItem<String>(
                             value: 'delete',
-                            child: Text('Delete'.tr(), style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                            child: Text('Delete'.tr(),
+                                style: isDarkMode
+                                    ? AppFonts.textW14bold
+                                    : AppFonts.textB14bold),
                           ),
                         ],
                       ),
@@ -237,38 +243,38 @@ class PostWidgetState extends State<PostWidget> {
                 ),
                 child: widget.posts.imageUrls.isNotEmpty
                     ? PageView.builder(
-                  itemCount: widget.posts.imageUrls.length,
-                  itemBuilder: (context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => FullScreenImage(
-                                imageUrl: widget.posts.imageUrls[index],
+                        itemCount: widget.posts.imageUrls.length,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => FullScreenImage(
+                                      imageUrl: widget.posts.imageUrls[index],
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  widget.posts.imageUrls[index],
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                             ),
                           );
                         },
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            widget.posts.imageUrls[index],
-                            fit: BoxFit.cover,
-                          ),
+                      )
+                    : Center(
+                        child: Text(
+                          "No images available".tr(),
+                          style: AppFonts.textB16bold,
                         ),
                       ),
-                    );
-                  },
-                )
-                    : Center(
-                  child: Text(
-                    "No images available".tr(),
-                    style: AppFonts.textB16bold,
-                  ),
-                ),
               ),
             ),
             Padding(
@@ -283,22 +289,13 @@ class PostWidgetState extends State<PostWidget> {
                       color: isLoved ? Colors.red : Colors.black,
                     ),
                     onPressed: () async {
-                      final userSnapshot = await FirebaseFirestore.instance
-                          .collection('Users')
-                          .doc(post.userName)
-                          .get();
-
-                      if (userSnapshot.exists) {
-                        final userToken = userSnapshot.data()?['userToken'];
-
-                        if (userToken != null) {
-                          // Send a notification
-                          notificationService.sendNotification(
-                            userToken,
-                            "Someone loved your post!",
-                          );
-                        }
-                      }
+                      notificationService.notify(
+                        targetUserName: post.userName,
+                        actorName: widget.currentUser,
+                        type: 'love',
+                        body: "Someone loved your post!",
+                        postId: post.postID,
+                      );
                       setState(() {
                         isLoved = !isLoved;
                         widget.posts.loves += isLoved ? 1 : -1;
@@ -307,14 +304,15 @@ class PostWidgetState extends State<PostWidget> {
                         postID: post.postID,
                         currentUser: widget.currentUser,
                         isLoved: isLoved,
-                        loves: widget.posts.loves,
-                        collection: postsCollection,
                         createLoveCubit: context.read<CreateLoveCubit>(),
                       );
                     },
                     iconSize: 25,
                   ),
-                  Text("${widget.posts.loves}", style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                  Text("${widget.posts.loves}",
+                      style: isDarkMode
+                          ? AppFonts.textW14bold
+                          : AppFonts.textB14bold),
                   const SizedBox(width: 10),
                   IconButton(
                     icon: const FaIcon(FontAwesomeIcons.comment),
@@ -324,11 +322,15 @@ class PostWidgetState extends State<PostWidget> {
                         MaterialPageRoute(
                           builder: (context) => MultiBlocProvider(
                             providers: [
-                              BlocProvider(create: (context) => GetUserCubit()..getUsers()),
+                              BlocProvider(
+                                  create: (context) =>
+                                      GetUserCubit()..getUsers()),
                               BlocProvider(create: (context) => GetLoveCubit()),
-                              BlocProvider(create: (context) => CreateLoveCubit()),
+                              BlocProvider(
+                                  create: (context) => CreateLoveCubit()),
                               BlocProvider(create: (context) => GetSaveCubit()),
-                              BlocProvider(create: (context) => CreateSaveCubit()),
+                              BlocProvider(
+                                  create: (context) => CreateSaveCubit()),
                             ],
                             child: PostDetailsPage(
                               currentUser: widget.currentUser,
@@ -344,7 +346,10 @@ class PostWidgetState extends State<PostWidget> {
                     },
                     iconSize: 25,
                   ),
-                  Text("${widget.posts.comments}", style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                  Text("${widget.posts.comments}",
+                      style: isDarkMode
+                          ? AppFonts.textW14bold
+                          : AppFonts.textB14bold),
                   const SizedBox(width: 10),
                   IconButton(
                     icon: const FaIcon(FontAwesomeIcons.paperPlane),
@@ -354,14 +359,15 @@ class PostWidgetState extends State<PostWidget> {
                       });
                       incrementShares(
                         postID: post.postID,
-                        shares: widget.posts.shares,
-                        collection: postsCollection,
                       );
                       Share.share(post.postID);
                     },
                     iconSize: 25,
                   ),
-                  Text("${widget.posts.shares}", style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                  Text("${widget.posts.shares}",
+                      style: isDarkMode
+                          ? AppFonts.textW14bold
+                          : AppFonts.textB14bold),
                   const Spacer(),
                   IconButton(
                     icon: FaIcon(
@@ -371,21 +377,13 @@ class PostWidgetState extends State<PostWidget> {
                       color: isSaved ? Colors.red : Colors.black,
                     ),
                     onPressed: () async {
-                      final userSnapshot = await FirebaseFirestore.instance
-                          .collection('Users')
-                          .doc(post.userName)
-                          .get();
-
-                      if (userSnapshot.exists) {
-                        final userToken = userSnapshot.data()?['userToken'];
-
-                        if (userToken != null) {
-                          notificationService.sendNotification(
-                            userToken,
-                            "Someone saved your post!",
-                          );
-                        }
-                      }
+                      notificationService.notify(
+                        targetUserName: post.userName,
+                        actorName: widget.currentUser,
+                        type: 'save',
+                        body: "Someone saved your post!",
+                        postId: post.postID,
+                      );
                       setState(() {
                         isSaved = !isSaved;
                       });
@@ -393,7 +391,6 @@ class PostWidgetState extends State<PostWidget> {
                         postID: post.postID,
                         currentUser: widget.currentUser,
                         isSaved: isSaved,
-                        collection: postsCollection,
                         createSaveCubit: context.read<CreateSaveCubit>(),
                       );
                     },
@@ -407,8 +404,9 @@ class PostWidgetState extends State<PostWidget> {
               child: Row(
                 children: [
                   const SizedBox(height: 20),
-                  Expanded(child: ExpandableTextRow(ex: widget.posts.description ?? "")
-                  ),
+                  Expanded(
+                      child: ExpandableTextRow(
+                          ex: widget.posts.description ?? "")),
                 ],
               ),
             ),

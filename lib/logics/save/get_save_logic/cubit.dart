@@ -1,42 +1,31 @@
-import 'package:flutter_application_3/logics/save/get_save_logic/state.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/errors/error_mapper.dart';
+import '../../../../domain/repositories/social_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../models/save_model.dart';
+import 'state.dart';
 
 class GetSaveCubit extends Cubit<GetSavesState> {
-  GetSaveCubit() : super(GetSaveInitialState());
+  final SocialRepository _socialRepository;
 
-  // Fetch all saves for a specific user
+  GetSaveCubit({SocialRepository? socialRepository})
+      : _socialRepository = socialRepository ?? sl.socialRepository,
+        super(GetSaveInitialState());
+
   Future<void> getSaves(String userName) async {
     emit(GetSaveLoadingState());
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('Saves')
-          .where('userName', isEqualTo: userName)
-          .get();
-
-      final saves = snapshot.docs
-          .map((doc) => SavesModel.fromMap(doc.data()))
-          .toList();
-
+      final saves = await _socialRepository.getSaves(userName);
       emit(GetSaveSuccessState(saves: saves));
     } catch (e) {
-      emit(GetSaveErrorState('Failed to fetch saves: $e'));
+      emit(GetSaveErrorState(friendlyError(e)));
     }
   }
 
-  // Check if a specific post is saved by a user
   Future<bool> getSaveStatus(String postId, String userName) async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('Saves')
-          .where('postId', isEqualTo: postId)
-          .where('userName', isEqualTo: userName)
-          .get();
-
-      return snapshot.docs.isNotEmpty;
+      return await _socialRepository.getSaveStatus(postId, userName);
     } catch (e) {
-      throw Exception("Failed to fetch save status: $e");
+      throw Exception(friendlyError(e));
     }
   }
 }

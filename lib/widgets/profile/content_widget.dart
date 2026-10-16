@@ -35,7 +35,7 @@ class ContentWidgetState extends State<ContentWidget> {
       builder: (context, state) {
         if (state is GetUserSuccessState) {
           final user = state.users.firstWhere(
-                (user) => user.userName == widget.currentUser,
+            (user) => user.userName == widget.currentUser,
             orElse: () => UsersModel.defaultUser(),
           );
           usersModel = user;
@@ -55,11 +55,12 @@ class ContentWidgetState extends State<ContentWidget> {
                           Stack(
                             children: [
                               CircleAvatar(
-                                radius: 50,
-                                backgroundImage: usersModel.profileImage != null
-                                    ? NetworkImage(usersModel.profileImage!)
-                                    : const AssetImage("assets/images/profile_picture.jpg")
-                              ),
+                                  radius: 50,
+                                  backgroundImage: usersModel.profileImage !=
+                                          null
+                                      ? NetworkImage(usersModel.profileImage!)
+                                      : const AssetImage(
+                                          "assets/images/profile_picture.jpg")),
                               Positioned(
                                 bottom: 0,
                                 right: 0,
@@ -78,9 +79,10 @@ class ContentWidgetState extends State<ContentWidget> {
                             ],
                           ),
                           const SizedBox(height: 10),
-                          Text(
-                            usersModel.userName, style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold
-                          ),
+                          Text(usersModel.userName,
+                              style: isDarkMode
+                                  ? AppFonts.textW24bold
+                                  : AppFonts.textB24bold),
                         ],
                       ),
                       const Spacer(),
@@ -92,28 +94,40 @@ class ContentWidgetState extends State<ContentWidget> {
                             children: [
                               Column(
                                 children: [
-                                  Text(
-                                    "${usersModel.numberOfPosts}", style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold
-                                  ),
-                                  Text('Posts'.tr(), style: isDarkMode ? AppFonts.textW20bold : AppFonts.textB20bold),
+                                  Text("${usersModel.numberOfPosts}",
+                                      style: isDarkMode
+                                          ? AppFonts.textW24bold
+                                          : AppFonts.textB24bold),
+                                  Text('Posts'.tr(),
+                                      style: isDarkMode
+                                          ? AppFonts.textW20bold
+                                          : AppFonts.textB20bold),
                                 ],
                               ),
                               const SizedBox(width: 20),
                               Column(
                                 children: [
-                                  Text(
-                                    "${usersModel.numberOfFollowers}", style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold
-                                  ),
-                                  Text('Followers'.tr(), style: isDarkMode ? AppFonts.textW20bold : AppFonts.textB20bold),
+                                  Text("${usersModel.numberOfFollowers}",
+                                      style: isDarkMode
+                                          ? AppFonts.textW24bold
+                                          : AppFonts.textB24bold),
+                                  Text('Followers'.tr(),
+                                      style: isDarkMode
+                                          ? AppFonts.textW20bold
+                                          : AppFonts.textB20bold),
                                 ],
                               ),
                               const SizedBox(width: 20),
                               Column(
                                 children: [
-                                  Text(
-                                    "${usersModel.numberOfFollowing}", style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold
-                                  ),
-                                  Text('Following'.tr(), style: isDarkMode ? AppFonts.textW20bold : AppFonts.textB20bold),
+                                  Text("${usersModel.numberOfFollowing}",
+                                      style: isDarkMode
+                                          ? AppFonts.textW24bold
+                                          : AppFonts.textB24bold),
+                                  Text('Following'.tr(),
+                                      style: isDarkMode
+                                          ? AppFonts.textW20bold
+                                          : AppFonts.textB20bold),
                                 ],
                               ),
                             ],
@@ -123,7 +137,8 @@ class ContentWidgetState extends State<ContentWidget> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  if (usersModel.webpage != null && usersModel.webpage!.isNotEmpty)
+                  if (usersModel.webpage != null &&
+                      usersModel.webpage!.isNotEmpty)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [

@@ -1,8 +1,8 @@
-import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/constants/app_constants.dart';
+import '../../core/utils/media_upload_helper.dart';
 import '../../logics/reel/create_real_logic/cubit.dart';
 import '../../logics/user/get_user_logic/cubit.dart';
 import '../../logics/user/get_user_logic/state.dart';
@@ -11,14 +11,15 @@ import 'create_reel.dart';
 
 class CreateReelWidget extends StatefulWidget {
   final String userName;
-  const CreateReelWidget({super.key, required  this.userName});
+  const CreateReelWidget({super.key, required this.userName});
 
   @override
   State<CreateReelWidget> createState() => CreateReelWidgetState();
 }
 
 class CreateReelWidgetState extends State<CreateReelWidget> {
-  final TextEditingController reelDescriptionController = TextEditingController();
+  final TextEditingController reelDescriptionController =
+      TextEditingController();
   XFile? selectedReelVideo;
 
   @override
@@ -33,17 +34,12 @@ class CreateReelWidgetState extends State<CreateReelWidget> {
     setState(() {});
   }
 
-  Future<String?> uploadReelVideo(XFile video, String userName) async {
-    try {
-      final storageRef = FirebaseStorage.instance
-          .ref()
-          .child("reelsVideos/$userName/${DateTime.now().millisecondsSinceEpoch}.mp4");
-      await storageRef.putFile(File(video.path));
-      return await storageRef.getDownloadURL();
-    } catch (e) {
-      debugPrint("Upload Error: $e");
-      return null;
-    }
+  Future<String?> uploadReelVideo(XFile video, String userName) {
+    return MediaUploadHelper.uploadVideo(
+      video: video,
+      folder: StorageBuckets.reelsFolder,
+      owner: userName,
+    );
   }
 
   @override
@@ -62,7 +58,7 @@ class CreateReelWidgetState extends State<CreateReelWidget> {
 
               if (state is GetUserSuccessState) {
                 final user = state.users.firstWhere(
-                      (user) => user.userName == widget.userName,
+                  (user) => user.userName == widget.userName,
                   orElse: () => UsersModel.defaultUser(),
                 );
                 profileImage = user.profileImage;

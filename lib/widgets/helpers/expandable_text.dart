@@ -30,12 +30,12 @@ class ExpandableTextRowState extends State<ExpandableTextRow> {
                 isExpanded = !isExpanded;
               });
             },
-            child: Text(
-              widget.ex,
-              maxLines: isExpanded ? null : 2,
-              overflow: isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
-              style: isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold
-            ),
+            child: Text(widget.ex,
+                maxLines: isExpanded ? null : 2,
+                overflow:
+                    isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                style:
+                    isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold),
           ),
         ],
       ),

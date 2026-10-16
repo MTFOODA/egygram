@@ -1,72 +1,40 @@
-import 'dart:convert';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import '../core/di/service_locator.dart';
+import '../core/errors/error_mapper.dart';
+import '../models/notification_model.dart';
 
+/// In-app notification helper backed by Supabase.
+///
+/// Push delivery (FCM/APNs) is intentionally NOT handled in the client. To send
+/// real push notifications, deploy the `send-push` Edge Function documented in
+/// the project guide and invoke it from a trusted server context. This class
+/// records an in-app notification row so the notifications UI stays functional.
 class NotificationService {
-  final FirebaseMessaging firebaseMessaging = FirebaseMessaging.instance;
-
-  Future<void> init() async {
-    await firebaseMessaging.requestPermission();
-    getToken();
-
-    // Handle foreground notifications
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint("Foreground Notification Received:");
-      debugPrint("Title: ${message.notification?.title}");
-      debugPrint("Body: ${message.notification?.body}");
-    });
-
-    // Handle notification taps when the app is in the background
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      debugPrint("Notification opened:");
-      debugPrint("Title: ${message.notification?.title}");
-      debugPrint("Body: ${message.notification?.body}");
-    });
-  }
-
-  Future<void> getToken() async {
+  /// Records an in-app notification for [targetUserName].
+  ///
+  /// Never throws to the caller: notification side-effects must not break the
+  /// primary user action (liking, commenting, etc.).
+  Future<void> notify({
+    required String targetUserName,
+    required String actorName,
+    required String type,
+    required String body,
+    String? postId,
+  }) async {
     try {
-      String? token = await firebaseMessaging.getToken();
-      if (token != null) {
-        debugPrint("FCM Token: $token");
-      }
-    } catch (e) {
-      debugPrint("Error retrieving FCM token: $e");
-    }
-  }
-
-  Future<void> sendNotification(String token, String body) async {
-    //todo find it to be work
-    const String serverKey = 'YOUR_SERVER_KEY_HERE'; // Replace with your FCM Server Key.
-    const String fcmEndpoint = 'https://fcm.googleapis.com/fcm/send';
-
-    try {
-      final message = {
-        'to': token,
-        'notification': {
-          'title': "Egygram",
-          'body': body,
-        },
-        'priority': 'high',
-      };
-
-      final response = await http.post(
-        Uri.parse(fcmEndpoint),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'key=$serverKey',
-        },
-        body: jsonEncode(message),
+      await sl.notificationRepository.createNotification(
+        NotificationModel(
+          userName: targetUserName,
+          actorName: actorName,
+          type: type,
+          body: body,
+          postId: postId,
+          createdAt: DateTime.now(),
+        ),
       );
-
-      if (response.statusCode == 200) {
-        debugPrint("Notification sent successfully: ${response.body}");
-      } else {
-        debugPrint("Failed to send notification: ${response.body}");
-      }
     } catch (e) {
-      debugPrint("Error sending notification: $e");
+      // Swallow errors deliberately (see doc comment). Kept as a single,
+      // documented fallback rather than silent per-call try/catch sprawl.
+      friendlyError(e);
     }
   }
 }

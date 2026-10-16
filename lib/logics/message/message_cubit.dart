@@ -1,46 +1,53 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'dart:async';
+
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/errors/error_mapper.dart';
+import '../../../../domain/repositories/message_repository.dart';
 import '../../models/message_model.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'message_state.dart';
 
 class MessageCubit extends Cubit<MessageState> {
-  final DatabaseReference messagesRef;
+  final MessageRepository _messageRepository;
   final String currentUser;
   final String selectedUser;
+  StreamSubscription<List<MessagesModel>>? _subscription;
 
-  MessageCubit(this.currentUser, this.selectedUser)
-      : messagesRef = FirebaseDatabase.instance.ref('chats'),
+  MessageCubit({
+    required this.currentUser,
+    required this.selectedUser,
+    MessageRepository? messageRepository,
+  })  : _messageRepository = messageRepository ?? sl.messageRepository,
         super(MessageInitialState());
 
   void fetchMessages() {
-    messagesRef.onValue.listen((event) {
-      final messages = event.snapshot.children.map((e) {
-        final data = e.value as Map;
-        return MessagesModel(
-          sender: data['sender'],
-          receiver: data['receiver'],
-          text: data['text'] ?? '',
-          mediaUrl: data['mediaUrl'], // Handle media URL
-          timestamp: DateTime.parse(data['timestamp']),
+    emit(MessageLoadingState(const []));
+    _subscription?.cancel();
+    _subscription = _messageRepository
+        .watchMessages(currentUser: currentUser, selectedUser: selectedUser)
+        .listen(
+          (messages) => emit(MessageLoadingState(messages)),
+          onError: (error) => emit(MessageErrorState(friendlyError(error))),
         );
-      }).where((message) {
-        // Filter messages for current chat room
-        return (message.sender == currentUser && message.receiver == selectedUser) ||
-            (message.sender == selectedUser && message.receiver == currentUser);
-      }).toList();
-
-      emit(MessageLoadingState(messages));
-    });
   }
 
-  void sendMessage(String sender, String text, {String? mediaUrl}) async {
-    final message = {
-      'sender': sender,
-      'receiver': selectedUser,
-      'text': text,
-      'mediaUrl': mediaUrl, // Add media URL to the message
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-    await messagesRef.push().set(message);
+  Future<void> sendMessage(String sender, String text,
+      {String? mediaUrl}) async {
+    try {
+      await _messageRepository.sendMessage(
+        sender: sender,
+        receiver: selectedUser,
+        text: text,
+        mediaUrl: mediaUrl,
+      );
+    } catch (e) {
+      emit(MessageErrorState(friendlyError(e)));
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _subscription?.cancel();
+    return super.close();
   }
 }

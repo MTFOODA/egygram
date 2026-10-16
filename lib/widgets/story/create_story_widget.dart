@@ -1,8 +1,8 @@
-import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/constants/app_constants.dart';
+import '../../core/utils/media_upload_helper.dart';
 import '../../logics/story/create_story_logic/cubit.dart';
 import '../../logics/user/get_user_logic/cubit.dart';
 import '../../logics/user/get_user_logic/state.dart';
@@ -11,14 +11,15 @@ import 'create_story.dart';
 
 class CreateStoryWidget extends StatefulWidget {
   final String userName;
-  const CreateStoryWidget({super.key, required  this.userName});
+  const CreateStoryWidget({super.key, required this.userName});
 
   @override
   State<CreateStoryWidget> createState() => CreateStoryWidgetState();
 }
 
 class CreateStoryWidgetState extends State<CreateStoryWidget> {
-  final TextEditingController storyDescriptionController = TextEditingController();
+  final TextEditingController storyDescriptionController =
+      TextEditingController();
   List<XFile> selectedStoryMedia = [];
 
   @override
@@ -30,35 +31,21 @@ class CreateStoryWidgetState extends State<CreateStoryWidget> {
   Future<void> selectStoryMedia() async {
     final picker = ImagePicker();
     try {
-      final pickedMedia = await picker.pickMultipleMedia(); // Ensure your environment supports this
-        setState(() {
-          selectedStoryMedia.addAll(pickedMedia);
-        });
+      final pickedMedia = await picker.pickMultipleMedia();
+      setState(() {
+        selectedStoryMedia.addAll(pickedMedia);
+      });
     } catch (e) {
-      print("Media Selection Error: $e");
+      debugPrint("Media Selection Error: $e");
     }
   }
 
-  Future<List<String>> uploadStoryMedia(List<XFile> medias, String userName) async {
-    List<String> mediaUrls = [];
-    try {
-      for (XFile media in medias) {
-        final isVideo = media.mimeType?.startsWith('video') ?? false;
-        final extension = isVideo ? '.mp4' : '.jpg';
-        final mediaTypeFolder = isVideo ? "videos" : "images";
-
-        final storageRef = FirebaseStorage.instance
-            .ref()
-            .child("storiesMedia/$userName/$mediaTypeFolder/${DateTime.now().millisecondsSinceEpoch}$extension");
-
-        await storageRef.putFile(File(media.path));
-        String mediaUrl = await storageRef.getDownloadURL();
-        mediaUrls.add(mediaUrl);
-      }
-    } catch (e) {
-      print("Upload Error: $e");
-    }
-    return mediaUrls;
+  Future<List<String>> uploadStoryMedia(List<XFile> medias, String userName) {
+    return MediaUploadHelper.uploadMedia(
+      files: medias,
+      folder: StorageBuckets.storiesFolder,
+      owner: userName,
+    );
   }
 
   @override
@@ -77,7 +64,7 @@ class CreateStoryWidgetState extends State<CreateStoryWidget> {
 
               if (state is GetUserSuccessState) {
                 final user = state.users.firstWhere(
-                      (user) => user.userName == widget.userName,
+                  (user) => user.userName == widget.userName,
                   orElse: () => UsersModel.defaultUser(),
                 );
                 profileImage = user.profileImage;

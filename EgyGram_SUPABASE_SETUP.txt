@@ -1,0 +1,198 @@
+===============================================================================
+ EgyGram - Supabase Setup & Database Deployment Guide
+===============================================================================
+ Project URL : https://rvfwruqfoewgilethbmf.supabase.co
+ Schema file : supabase/migrations/0001_init.sql
+ Key handoff : EgyGram_SUPABASE_CLIENT_CONFIG.txt
+
+ This guide is split into:
+   PART A - Completed locally (already done, no action needed)
+   PART B - Manual Supabase Dashboard actions (YOU must do these)
+   PART C - Running and testing the app
+   PART D - Troubleshooting common errors
+
+-------------------------------------------------------------------------------
+ PART A - COMPLETED LOCALLY (nothing for you to do)
+-------------------------------------------------------------------------------
+ The following was prepared and validated on your machine:
+
+   * Verified the Flutter configuration mechanism: the app reads SUPABASE_URL
+     and SUPABASE_ANON_KEY via --dart-define (lib/core/config/supabase_config.dart
+     uses String.fromEnvironment). No keys are hardcoded in source.
+   * Audited supabase/migrations/0001_init.sql end-to-end (tables, PKs/FKs,
+     constraints, indexes via UNIQUE, RPCs, RLS policies, storage bucket +
+     policies, realtime publication).
+   * FIXED a dependency-order defect: the `notifications` table used to be
+     created at the very END of the file, after the realtime publication, RLS
+     enablement and RLS policies already referenced it. On a brand-new database
+     the migration would fail with `relation "public.notifications" does not
+     exist`. The table is now defined with the other tables at the top, so a
+     clean first-time apply works. The file remains idempotent (safe to re-run).
+   * Set the real project URL in .env.example (URL is public; key left blank).
+   * Added .env / .env.local / EgyGram_SUPABASE_CLIENT_CONFIG.txt to .gitignore
+     so real keys are never committed. .env.example stays tracked.
+   * Created EgyGram_SUPABASE_CLIENT_CONFIG.txt (the key handoff file).
+   * flutter analyze / flutter test / dart format were run on the project
+     (see the summary at the bottom of the chat for actual results).
+
+ NOTE ON DEPLOYMENT: The Supabase CLI is NOT linked to this project locally
+ (there is no supabase/config.toml), and this assistant did not connect to your
+ live database. Deploying the schema is a manual step you perform in the
+ Dashboard SQL Editor (Part B). No live deployment is claimed here.
+
+-------------------------------------------------------------------------------
+ PART B - MANUAL SUPABASE DASHBOARD ACTIONS
+-------------------------------------------------------------------------------
+ B1. Open the SQL Editor
+   - Go to https://supabase.com/dashboard and select the EgyGram project.
+   - In the left sidebar click "SQL Editor".
+   - Click "New query" (or "+ New query").
+
+ B2. Review and deploy the schema
+   - Open d:\MTFOODA\Code\Flutter apps\Egygram\supabase\migrations\0001_init.sql
+     in your editor and COPY THE ENTIRE FILE CONTENTS.
+   - Paste it into the SQL Editor query box.
+   - Click "Run" (or press Ctrl+Enter).
+   - Expected result: "Success. No rows returned."
+   - The file is idempotent, so re-running it is safe.
+
+   What it creates:
+     - Extension: pgcrypto (gen_random_uuid)
+     - 10 tables: profiles, posts, reels, stories, comments, loves, saves,
+       follows, messages, notifications
+     - 3 RPC functions (SECURITY DEFINER): adjust_content_counter,
+       adjust_profile_counter, delete_old_stories
+     - Row Level Security policies for all 10 tables
+     - 1 public storage bucket: "media" (+ object policies)
+     - Realtime publication entries for: posts, reels, stories, comments,
+       messages, notifications
+
+ B3. Confirm the deployment (optional verification queries)
+   Run these in the SQL Editor and check the results:
+
+   -- Tables (expect 10)
+   select table_name from information_schema.tables
+     where table_schema = 'public' order by table_name;
+
+   -- RPC functions (expect the 3 listed above)
+   select proname from pg_proc
+     where pronamespace = 'public'::regnamespace order by proname;
+
+   -- Storage bucket (expect one row: media, public = true)
+   select id, name, public from storage.buckets;
+
+   -- Realtime publication membership (expect the 6 tables)
+   select pubname, schemaname, tablename
+     from pg_publication_tables
+     where pubname = 'supabase_realtime' and schemaname = 'public'
+     order by tablename;
+
+   -- RLS enabled (expect relrowsecurity = true for all 10 tables)
+   select relname, relrowsecurity from pg_class
+     where relnamespace = 'public'::regnamespace and relkind = 'r'
+     order by relname;
+
+   -- Policies (expect several per table)
+   select tablename, policyname from pg_policies
+     where schemaname = 'public' order by tablename, policyname;
+
+ B4. Configure Authentication (email + redirect URLs)
+   - Go to Authentication -> Providers -> Email and make sure Email is enabled.
+   - For local testing you may TURN OFF "Confirm email" (Authentication ->
+     Providers -> Email -> uncheck "Confirm email") so sign-up returns a
+     session immediately. If you leave "Confirm email" ON, the app routes new
+     users to the login screen after sign-up and bootstraps their profile row
+     on first sign-in (handled in auth_repository_impl.dart).
+   - Site URL / Redirect URLs: Authentication -> URL Configuration. For local
+     runs you can set Site URL to the project URL. Add any deep-link redirect
+     URLs your build uses. For a first smoke test these are usually optional
+     unless you use email confirmation links or OAuth.
+-------------------------------------------------------------------------------
+
+ PART C - RUN AND TEST THE APP
+-------------------------------------------------------------------------------
+ C1. Get your client key
+   - Follow EgyGram_SUPABASE_CLIENT_CONFIG.txt section 3 to copy your
+     publishable / anon key from Project Settings -> API (or API Keys).
+
+ C2. Run the app (no --dart-define needed):
+
+   flutter pub get
+   flutter run
+
+   The Supabase URL and anon key are baked into the app as
+   String.fromEnvironment DEFAULTS in lib/core/config/supabase_config.dart, so
+   the app is already correctly configured and runs out of the box. In VS Code,
+   just use the "EgyGram (debug)" launch configuration.
+
+   OPTIONAL - to point at a DIFFERENT project/environment, override the values:
+   (PowerShell)
+   flutter run ^
+     --dart-define=SUPABASE_URL=https://other.supabase.co ^
+     --dart-define=SUPABASE_ANON_KEY=<other-anon-key>
+
+   (Bash: use `\` line continuations instead of `^`.)
+   NOTE: do NOT pass an empty --dart-define=SUPABASE_ANON_KEY= - that overrides
+   the baked-in default with an empty value and the app will refuse to start.
+
+ C3. Smoke test checklist
+   - Signup: create an account. If "Confirm email" is OFF you land in the app
+     immediately and a profiles row is created. If ON, confirm via email, then
+     sign in (profile row is bootstrapped on first sign-in).
+   - Login / Logout / Session restoration: sign out, sign back in; fully close
+     and reopen the app - the Supabase SDK should restore the session so you
+     skip the login screen.
+   - Posts: create a post with an image (uploads to the "media" bucket), edit
+     it, delete it; verify it appears in the home feed (realtime).
+   - Reels: create a reel with a video; verify playback in the reel feed.
+   - Stories: create a story; verify it shows in the story ring; confirm it
+     disappears after the 50-minute expiry window.
+   - Comments: add and delete a comment on a post.
+   - Likes (loves): toggle love on a post/reel; verify the counter updates.
+   - Saves: save and unsave a post; check the saved posts screen.
+   - Follows: follow/unfollow another user; verify follower/following counters.
+   - Messages: send a text and a media message to another user; verify realtime
+     delivery in the chat.
+   - Notifications: perform a like/comment/follow and confirm a notification row
+     appears in the notifications screen.
+
+-------------------------------------------------------------------------------
+ PART D - COMMON ERRORS AND FIXES
+-------------------------------------------------------------------------------
+ * "Supabase is not configured..." / SupabaseConfigException at startup
+   -> The app ships with valid defaults baked in, so this only appears if an
+      override was passed as EMPTY (e.g. --dart-define=SUPABASE_ANON_KEY= with
+      no value) or the defaults in lib/core/config/supabase_config.dart were
+      changed to a placeholder. Remove the empty --dart-define, or restore a
+      valid URL/anon key, then re-run.
+
+ * "Invalid API key" / 401 Unauthorized on network calls
+   -> The key is wrong, truncated, has surrounding quotes, or wrapped across
+      lines. Copy the full publishable/anon key on one line with no quotes.
+
+ * RLS "new row violates row-level security policy" on insert
+   -> Usually means the signed-in auth.uid() does not match the row's user_id,
+      or the migration policies are missing. Confirm you signed in first and
+      that the migration created the policies (Part B3).
+
+ * Login fails with "Email not confirmed"
+   -> "Confirm email" is ON. Either confirm the email, or turn OFF "Confirm
+      email" in Authentication -> Providers -> Email for local testing.
+
+ * Realtime not updating (feed/chat doesn't refresh live)
+   -> The table was not added to the supabase_realtime publication. Re-run the
+      migration, or verify with the publication query in Part B3.
+
+ * Storage upload fails / 403 on upload
+   -> The "media" bucket or its policies are missing. Re-run the migration and
+      confirm with the bucket query in Part B3. You must be signed in to upload.
+
+ * "relation public.notifications does not exist" during migration
+   -> You are running an OLD copy of the file. Use the current
+      supabase/migrations/0001_init.sql where notifications is defined at the
+      top with the other tables.
+
+ * Story ring shows old content
+   -> Story expiry is best-effort and runs when clients query. Stories older
+      than 50 minutes are pruned via deleteStoriesOlderThan / delete_old_stories.
+===============================================================================

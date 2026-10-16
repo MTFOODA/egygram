@@ -1,8 +1,8 @@
-import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/constants/app_constants.dart';
+import '../../core/utils/media_upload_helper.dart';
 import '../../logics/post/create_post_logic/cubit.dart';
 import '../../logics/user/get_user_logic/cubit.dart';
 import '../../logics/user/get_user_logic/state.dart';
@@ -18,7 +18,8 @@ class CreatePostWidget extends StatefulWidget {
 }
 
 class CreatePostWidgetState extends State<CreatePostWidget> {
-  final TextEditingController postDescriptionController = TextEditingController();
+  final TextEditingController postDescriptionController =
+      TextEditingController();
   List<XFile> selectedPostImages = [];
 
   @override
@@ -39,26 +40,12 @@ class CreatePostWidgetState extends State<CreatePostWidget> {
     }
   }
 
-  Future<List<String>> uploadPostImages(List<XFile> images, String userName) async {
-    List<String> imageUrls = [];
-    try {
-      for (XFile image in images) {
-        final isVideo = image.mimeType?.startsWith('video') ?? false;
-        final extension = isVideo ? '.mp4' : '.jpg';
-        final mediaTypeFolder = isVideo ? "videos" : "images";
-
-        final storageRef = FirebaseStorage.instance
-            .ref()
-            .child("Posts/$userName/$mediaTypeFolder/${DateTime.now().millisecondsSinceEpoch}$extension");
-
-        await storageRef.putFile(File(image.path));
-        String mediaUrl = await storageRef.getDownloadURL();
-        imageUrls.add(mediaUrl);
-      }
-    } catch (e) {
-      debugPrint("Upload Error: $e");
-    }
-    return imageUrls;
+  Future<List<String>> uploadPostImages(List<XFile> images, String userName) {
+    return MediaUploadHelper.uploadMedia(
+      files: images,
+      folder: StorageBuckets.postsFolder,
+      owner: userName,
+    );
   }
 
   @override
@@ -77,7 +64,7 @@ class CreatePostWidgetState extends State<CreatePostWidget> {
 
               if (state is GetUserSuccessState) {
                 final user = state.users.firstWhere(
-                      (user) => user.userName == widget.userName,
+                  (user) => user.userName == widget.userName,
                   orElse: () => UsersModel.defaultUser(),
                 );
                 profileImage = user.profileImage;

@@ -15,7 +15,7 @@ import '../logics/save/get_save_logic/cubit.dart';
 import '../logics/story/get_story_logic/cubit.dart';
 import '../logics/story/get_story_logic/state.dart';
 import '../logics/user/get_user_logic/cubit.dart';
-import '../models/Story_model.dart';
+import '../models/story_model.dart';
 import '../screens/notification_page.dart';
 import '../utilities/fonts_dart.dart';
 import '../utilities/theme_provider.dart';
@@ -48,7 +48,8 @@ class HomePageState extends State<HomePage> {
   }
 
   void startStoryDeletionTimer(BuildContext context) {
-    storyDeletionTimer = Timer.periodic(const Duration(minutes: 1), (timer) async {
+    storyDeletionTimer =
+        Timer.periodic(const Duration(minutes: 1), (timer) async {
       await deleteOldStories(context);
     });
   }
@@ -64,6 +65,10 @@ class HomePageState extends State<HomePage> {
     await Future.delayed(const Duration(seconds: 1));
   }
 
+  bool _isArabic(BuildContext context) {
+    return Localizations.localeOf(context).languageCode == 'ar';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
@@ -72,7 +77,8 @@ class HomePageState extends State<HomePage> {
       providers: [
         BlocProvider(create: (context) => GetPostCubit()..subscribeToPosts()),
         BlocProvider(create: (context) => GetUserCubit()..getUsers()),
-        BlocProvider(create: (context) => GetStoryCubit()..subscribeToStories()),
+        BlocProvider(
+            create: (context) => GetStoryCubit()..subscribeToStories()),
         BlocProvider(create: (context) => GetLoveCubit()),
         BlocProvider(create: (context) => CreateLoveCubit()),
         BlocProvider(create: (context) => GetSaveCubit()),
@@ -80,7 +86,8 @@ class HomePageState extends State<HomePage> {
       ],
       child: Scaffold(
         appBar: AppBar(
-          title: Text('Egygram'.tr(), style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+          title: Text('Egygram'.tr(),
+              style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
           actions: [
             IconButton(
               icon: const FaIcon(FontAwesomeIcons.heart),
@@ -113,7 +120,9 @@ class HomePageState extends State<HomePage> {
           child: Column(
             children: [
               Align(
-                alignment: Alignment.centerLeft,
+                alignment: _isArabic(context)
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
                 child: BlocBuilder<GetStoryCubit, GetStoriesState>(
                   builder: (context, state) {
                     if (state is GetStoryLoadingState) {
@@ -122,17 +131,21 @@ class HomePageState extends State<HomePage> {
                       // Filter stories to ensure each user has only one story
                       final uniqueStories = state.stories
                           .fold<Map<String, StoriesModel>>({}, (map, story) {
-                        if (!map.containsKey(story.userName)) {
-                          map[story.userName] = story;
-                        }
-                        return map;
-                      }).values.toList();
+                            if (!map.containsKey(story.userName)) {
+                              map[story.userName] = story;
+                            }
+                            return map;
+                          })
+                          .values
+                          .toList();
 
-                      final StoriesModel? currentUserStory = uniqueStories
-                          .firstWhereOrNull((story) => story.userName == widget.currentUser);
+                      final StoriesModel? currentUserStory =
+                          uniqueStories.firstWhereOrNull(
+                              (story) => story.userName == widget.currentUser);
 
                       final otherStories = uniqueStories
-                          .where((story) => story.userName != widget.currentUser)
+                          .where(
+                              (story) => story.userName != widget.currentUser)
                           .toList();
 
                       return StoryWidget(
@@ -178,7 +191,10 @@ class HomePageState extends State<HomePage> {
                       );
                     } else {
                       return Center(
-                        child: Text('No posts found'.tr(), style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+                        child: Text('No posts found'.tr(),
+                            style: isDarkMode
+                                ? AppFonts.textW24bold
+                                : AppFonts.textB24bold),
                       );
                     }
                   },

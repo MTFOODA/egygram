@@ -1,31 +1,24 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/errors/error_mapper.dart';
+import '../../../../domain/repositories/social_repository.dart';
 import '../../../models/love_model.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'state.dart';
 
 class CreateLoveCubit extends Cubit<CreateLoveStates> {
-  CreateLoveCubit() : super(CreateLoveInitialStates());
+  final SocialRepository _socialRepository;
+
+  CreateLoveCubit({SocialRepository? socialRepository})
+      : _socialRepository = socialRepository ?? sl.socialRepository,
+        super(CreateLoveInitialStates());
 
   Future<void> toggleLove(LovesModel loves) async {
     emit(CreateLoveLoadingStates());
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('Loves')
-          .where('postId', isEqualTo: loves.postId)
-          .where('userName', isEqualTo: loves.userName)
-          .get();
-
-      if (snapshot.docs.isEmpty) {
-        await FirebaseFirestore.instance.collection('Loves').add(loves.toMap());
-      } else {
-        await FirebaseFirestore.instance
-            .collection('Loves')
-            .doc(snapshot.docs.first.id)
-            .delete();
-      }
+      await _socialRepository.toggleLove(loves);
       emit(CreateLoveSuccessStates());
     } catch (e) {
-      emit(CreateLoveErrorStates(e.toString()));
+      emit(CreateLoveErrorStates(friendlyError(e)));
     }
   }
 }

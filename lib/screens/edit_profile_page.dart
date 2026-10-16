@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import '../core/utils/media_upload_helper.dart';
 import '../logics/user/edit_user_logic/cubit.dart';
 import '../logics/user/edit_user_logic/state.dart';
 import '../models/user_model.dart';
@@ -23,21 +23,21 @@ class EditProfilePage extends StatefulWidget {
 
 class EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController userNameController =
-  TextEditingController(text: widget.userModel.userName);
+      TextEditingController(text: widget.userModel.userName);
   late TextEditingController bioController =
-  TextEditingController(text: widget.userModel.bio);
+      TextEditingController(text: widget.userModel.bio);
   late TextEditingController websiteController =
-  TextEditingController(text: widget.userModel.webpage);
+      TextEditingController(text: widget.userModel.webpage);
   late TextEditingController emailController =
-  TextEditingController(text: widget.userModel.email);
+      TextEditingController(text: widget.userModel.email);
   late TextEditingController phoneController =
-  TextEditingController(text: widget.userModel.phone);
+      TextEditingController(text: widget.userModel.phone);
   late String selectedGender = widget.userModel.gender ?? 'None';
   File? pickedImage;
 
   Future<void> pickImage() async {
     final pickedFile =
-    await ImagePicker().pickImage(source: ImageSource.gallery);
+        await ImagePicker().pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
       setState(() {
@@ -46,22 +46,15 @@ class EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-  Future<String?> uploadProfileImage(File image, String userName) async {
-    try {
-      final storageRef = FirebaseStorage.instance
-          .ref().child("profileImages/$userName/${DateTime.now().millisecondsSinceEpoch}.jpg");
-      await storageRef.putFile(image);
-      return await storageRef.getDownloadURL();
-    } catch (e) {
-      print("Upload Error: $e");
-      return null;
-    }
+  Future<String?> uploadProfileImage(File image, String userName) {
+    return MediaUploadHelper.uploadProfileImage(image: image, owner: userName);
   }
 
   void editUser(BuildContext context) async {
     String? imageUrl;
     if (pickedImage != null) {
-      imageUrl = await uploadProfileImage(pickedImage!, widget.userModel.userName);
+      imageUrl =
+          await uploadProfileImage(pickedImage!, widget.userModel.userName);
     }
 
     final updatedUser = UsersModel(
@@ -85,9 +78,10 @@ class EditProfilePageState extends State<EditProfilePage> {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (context) => NavigationScreen(initialIndex: 0,userName: widget.userModel.userName),
+          builder: (context) => NavigationScreen(
+              initialIndex: 0, userName: widget.userModel.userName),
         ),
-            (Route<dynamic> route) => false,
+        (Route<dynamic> route) => false,
       );
     } else if (state is EditUserErrorState) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -108,12 +102,13 @@ class EditProfilePageState extends State<EditProfilePage> {
             Navigator.pop(context);
           },
         ),
-        title: Text('Edit Profile'.tr(), style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+        title: Text('Edit Profile'.tr(),
+            style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
         actions: [
           TextButton(
             onPressed: () => editUser(context),
             child: Text(
-              'Done'.tr(),//TODO
+              'Done'.tr(), //TODO
               style: const TextStyle(color: Colors.blue),
             ),
           ),
@@ -131,8 +126,9 @@ class EditProfilePageState extends State<EditProfilePage> {
                     backgroundImage: pickedImage != null
                         ? FileImage(pickedImage!)
                         : widget.userModel.profileImage != null
-                        ? NetworkImage(widget.userModel.profileImage!)
-                        : const AssetImage('assets/images/profile_picture.jpg'),
+                            ? NetworkImage(widget.userModel.profileImage!)
+                            : const AssetImage(
+                                'assets/images/profile_picture.jpg'),
                   ),
                   Positioned(
                     bottom: 0,
@@ -154,7 +150,7 @@ class EditProfilePageState extends State<EditProfilePage> {
               controller: userNameController,
               decoration: InputDecoration(
                 enabled: false,
-                labelText: "User Name".tr(),//TODO
+                labelText: "User Name".tr(), //TODO
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -200,7 +196,7 @@ class EditProfilePageState extends State<EditProfilePage> {
             ),
             const SizedBox(height: 8.0),
             DropdownButtonFormField<String>(
-              value: selectedGender,
+              initialValue: selectedGender,
               items: [
                 DropdownMenuItem(value: 'None', child: Text('None'.tr())),
                 DropdownMenuItem(value: 'Male', child: Text('Male'.tr())),

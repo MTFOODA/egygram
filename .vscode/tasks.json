@@ -1,0 +1,31 @@
+{
+  // EgyGram's Supabase URL and anon key are baked into SupabaseConfig as
+  // String.fromEnvironment defaults, so a plain build is already correctly
+  // configured (no --dart-define required). Run a task via Terminal -> Run Task.
+  //
+  // To build against a DIFFERENT project/environment, append
+  // --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...
+  // Do NOT pass an empty --dart-define=SUPABASE_ANON_KEY= (that overrides the
+  // baked-in default with an empty value and the app will refuse to start).
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "flutter pub get",
+      "type": "shell",
+      "command": "flutter pub get",
+      "problemMatcher": []
+    },
+    {
+      "label": "build apk debug",
+      "type": "shell",
+      "command": "flutter build apk --debug",
+      "problemMatcher": []
+    },
+    {
+      "label": "build apk release",
+      "type": "shell",
+      "command": "flutter build apk --release",
+      "problemMatcher": []
+    }
+  ]
+}

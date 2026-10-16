@@ -1,0 +1,527 @@
+================================================================================
+ EgyGram - COMPLETE PROJECT GUIDE
+ Firebase -> Supabase migration + Clean Architecture refactor
+================================================================================
+
+CONTENTS
+  1.  Overview
+  2.  Tech stack
+  3.  Project structure (Clean Architecture)
+  4.  Getting started (Supabase + Flutter setup)
+  5.  Database schema
+  6.  Row Level Security (RLS)
+  7.  RPC functions
+  8.  Storage
+  9.  Application layers in detail
+  10. Feature map (screen -> logic -> data)
+  11. Migration notes (what changed from Firebase)
+  12. Bug fixes applied during the migration
+  13. Running, testing and building
+  14. Known limitations & next steps
+
+================================================================================
+1. OVERVIEW
+================================================================================
+EgyGram is an Instagram-style social app (posts, reels, stories, comments,
+likes/loves, saves, follows, direct messages, in-app notifications) built with
+Flutter. The backend is now 100% Supabase:
+
+  * Supabase Auth      - email/password sign-up and sign-in
+  * Supabase Postgres  - all domain data with Row Level Security
+  * Supabase Realtime  - live streams for posts/reels/stories/comments/
+                         messages/notifications
+  * Supabase Storage   - a single public "media" bucket for every upload
+
+No Firebase package remains anywhere in the Dart code, and the Firebase
+entries were removed from pubspec.yaml. Firebase Auth/Storage/Firestore calls
+were replaced by repository methods backed by the Supabase SDK.
+A full-repository sweep (Dart, gradle, manifests, pubspec.lock, iOS/web/
+desktop scaffolds) verified the only remaining 'firebase' strings are
+historical notes in this guide and two source comments - no active
+dependency, configuration, or native integration remains.
+
+================================================================================
+2. TECH STACK
+================================================================================
+  Flutter (Dart SDK ^3.5.4)
+  supabase_flutter ^2.8.0        backend (auth/database/realtime/storage)
+  uuid ^4.4.0                    client-side id generation for content rows
+  flutter_bloc ^8.1.6            state management (Cubit)
+  provider ^6.0.0                theme/locale plumbing
+  easy_localization ^3.0.7       en/ar/fr/de translations
+  cached_network_image           image loading
+  image_picker / video_picker    media selection
+  font_awesome_flutter ^11.0.0  icons (v11 required: Flutter 3.44+
+                                made IconData final; all usages are
+                                FaIcon(...) which v11 demands)
+  share_plus                     share sheet
+  lottie                         animations
+
+================================================================================
+3. PROJECT STRUCTURE (CLEAN ARCHITECTURE)
+================================================================================
+lib/
+├── core/
+│   ├── config/supabase_config.dart      -- URL/anon key via --dart-define
+│   ├── constants/app_constants.dart     -- table/column/bucket names (single
+│   │                                       source of truth shared with SQL)
+│   ├── di/service_locator.dart          -- `sl` locator wiring every repo
+│   ├── errors/exceptions.dart           -- AppException + typed subclasses
+│   ├── errors/error_mapper.dart         -- user-friendly error strings
+│   └── utils/
+│       ├── media_upload_helper.dart     -- centralised media upload + newId()
+│       └── date_parser.dart             -- tolerant DateTime parsing
+├── domain/                              -- pure contracts + models
+│   └── repositories/                    -- abstract repository interfaces
+│       auth / user / post / reel / story / comment / social / message /
+│       storage / notification
+├── data/                                -- Supabase implementations
+│   └── repositories/                    -- *RepositoryImpl classes
+├── models/                              -- serializable domain models
+│   user / post / reel / story / comment / love / save / follow /
+│   message / notification
+├── logics/                              -- Cubits (one folder per feature)
+│   login / signup / user / post / reel / story / comments / love / save /
+│   follow / chat / edit_post / edit_reel / edit_profile / notification
+├── screens/                             -- full pages (login, signup,
+│                                          edit_post, edit_profile, edit_reel,
+│                                          forgot_password ...)
+├── widgets/                             -- reusable UI grouped by domain
+│   helpers/  post/  reel/  story/  profile/  create/ ...
+├── navigation/                          -- root, home, tabs, reel page
+├── utilities/                           -- theme, fonts, decoration,
+│                                          notification_service, cache helper
+└── main.dart                            -- bootstrap
+
+Layering rule:
+  UI (widgets/screens) -> Cubits (logics) -> Repository interfaces (domain)
+  -> Supabase implementations (data). UI never talks to Supabase directly.
+
+================================================================================
+4. GETTING STARTED
+================================================================================
+4.1 Create a Supabase project (https://supabase.com).
+
+4.2 Apply the schema. Open the SQL editor and run the whole file:
+      supabase/migrations/0001_init.sql
+    It is idempotent (safe to re-run). It creates:
+      - 10 tables (profiles, posts, reels, stories, comments, loves, saves,
+        follows, messages, notifications)
+      - RLS policies for every table
+      - 3 RPC functions (adjust_content_counter, adjust_profile_counter,
+        delete_old_stories)
+      - the public "media" storage bucket + object policies
+      - Realtime publication entries for streamed tables
+
+4.3 Enable email auth. In the dashboard: Authentication -> Providers ->
+    Email. For local testing you may disable "Confirm email" so sign-up
+    returns a session immediately.
+
+4.4 Configuration (already done - runs out of the box):
+    The Supabase URL and anon key are baked into the app as
+    String.fromEnvironment DEFAULTS in lib/core/config/supabase_config.dart:
+      SUPABASE_URL    = https://rvfwruqfoewgilethbmf.supabase.co
+      SUPABASE_ANON_KEY = <this project's anon/publishable key>
+    so the app is correctly configured with NO extra flags. The anon key is a
+    public client key (safe to ship because RLS protects the data); it is also
+    recorded in .env.example and EgyGram_SUPABASE_CLIENT_CONFIG.txt (gitignored).
+    To target a DIFFERENT project/environment, override at run/build time, e.g.:
+      flutter run --dart-define=SUPABASE_URL=https://other.supabase.co \
+                  --dart-define=SUPABASE_ANON_KEY=<other-anon-key>
+    (Do NOT pass an empty --dart-define=SUPABASE_ANON_KEY= - it overrides the
+    baked-in default with an empty value.) Invalid/missing config fails fast at
+    startup with a clear message (SupabaseConfig.assertConfigured) shown on a
+    StartupErrorScreen.
+
+4.5 Run:
+      flutter pub get
+      flutter run
+
+================================================================================
+5. DATABASE SCHEMA
+================================================================================
+All tables use uuid primary keys generated by pgcrypto. Content rows store
+both the auth UUID (user_id, used by RLS) and the human user_name (used by
+the UI, which identifies people by name).
+
+profiles
+  id uuid PK, user_name text UNIQUE, user_token text, bio, webpage,
+  profile_image, email, phone, gender,
+  number_of_posts/followers/following int,
+  list_of_reels/tagged_for_me/posts/videos text[],
+  created_at timestamptz
+
+posts
+  id uuid PK, user_id uuid -> auth.users, user_name, profile_image,
+  image_urls text[], description, loves/comments/shares int, created_at
+
+reels
+  id uuid PK, user_id uuid -> auth.users, user_name, profile_image,
+  video text, description, loves/comments/shares int, created_at
+
+stories
+  id uuid PK, user_id uuid -> auth.users, user_name, profile_image,
+  image_urls text, type text ('image'|'video'), loves/comments int,
+  created_at  (expired-story cleanup is best-effort, 50-minute window)
+
+comments
+  id uuid PK, user_id uuid -> auth.users, user_name, profile_image,
+  post_id uuid (posts OR reels OR stories id), content, created_at
+
+loves
+  id uuid PK, user_id, user_name, post_id uuid, loved bool
+  UNIQUE (post_id, user_name)
+
+saves
+  id uuid PK, user_id, user_name, post_id uuid, saved bool
+  UNIQUE (post_id, user_name)
+
+follows
+  id uuid PK, user_id, user_name (follower), user_followed, followed bool
+  UNIQUE (user_followed, user_name)
+
+messages
+  id uuid PK, sender_id uuid -> auth.users, receiver_id uuid (nullable),
+  sender_name, receiver_name, text, media_url, created_at
+
+notifications
+  id uuid PK, user_name (recipient), actor_name, type ('love'|'comment'|
+  'save'|'follow'...), body, post_id uuid, is_read bool, created_at
+
+================================================================================
+6. ROW LEVEL SECURITY
+================================================================================
+Design goals: content is publicly readable (Instagram-style), writes are only
+possible by the authenticated owner, and cross-user counters (likes, comments,
+shares, followers) are updated through SECURITY DEFINER RPCs so RLS never
+blocks them.
+
+  profiles      select: everyone | insert/update/delete: owner (auth.uid()=id)
+  posts/reels/
+  stories/
+  comments      select: everyone | insert/update/delete: author (user_id)
+  loves/saves/
+  follows       select: everyone | insert/delete: the acting user (user_id)
+  messages      select: participants only (sender_id match or user_name in
+                {sender,receiver}) | insert/delete: sender
+  notifications select: recipient only | insert: any authenticated user |
+                update/delete: recipient
+
+================================================================================
+7. RPC FUNCTIONS
+================================================================================
+adjust_content_counter(p_table text, p_id uuid, p_column text, p_delta int)
+  Increments/decrements 'loves'|'comments'|'shares' on posts|reels|stories.
+  SECURITY DEFINER + whitelist, clamped at zero with greatest(0, ...).
+
+adjust_profile_counter(p_user_name text, p_column text, p_delta int)
+  Increments/decrements number_of_followers / number_of_following /
+  number_of_posts on profiles keyed by user_name.
+
+delete_old_stories(max_age interval) returns int
+  Deletes stories older than max_age; returns rows removed. The client calls
+  the equivalent repository method (deleteStoriesOlderThan) best-effort.
+
+================================================================================
+8. STORAGE
+================================================================================
+One public bucket: "media", organised as:
+  media/posts/<user>/<uuid>.jpg
+  media/reels/<user>/<uuid>.mp4
+  media/stories/<user>/<uuid>.jpg
+  media/avatars/<user>/<uuid>.jpg
+  media/messages/<user>/<uuid>.<ext>
+The bucket is public-read; any authenticated user may upload/update/delete.
+All uploads funnel through StorageRepository (uploadFile/uploadBytes) and the
+MediaUploadHelper widget-side helper; filenames always include a uuid
+(MediaUploadHelper.newId()) to avoid collisions.
+
+================================================================================
+9. APPLICATION LAYERS IN DETAIL
+================================================================================
+9.1 Domain layer (lib/domain/repositories/)
+    Abstract contracts only, one per aggregate:
+      AuthRepository       signIn/signUp/signOut/reset, currentUserId,
+                           isAuthenticated, authStateChanges, ensureProfile
+      UserRepository       watchUsers, getUserByName, createUser, updateUser
+      PostRepository       watchPosts, create/get/update/delete, adjustCounter
+      ReelRepository       watchReels, create/get/update/delete
+      StoryRepository      watchStories, createStory, deleteStory,
+                           deleteStoriesOlderThan
+      CommentRepository    watchComments, addComment, deleteComment
+      SocialRepository     toggleFollow/Love/Save + status getters
+      MessageRepository    watchMessages, sendMessage
+      StorageRepository    uploadFile, uploadBytes
+      NotificationRepository watchNotifications, createNotification,
+                           markRead, deleteNotification
+
+9.2 Data layer (lib/data/repositories/)
+    *RepositoryImpl classes take a SupabaseClient in their constructor and are
+    registered once in sl.init(...) (service_locator.dart). All queries map
+    rows through the matching model's fromMap/toMap. Errors are wrapped in
+    typed exceptions (ServerException/AuthException/StorageException) and
+    translated to friendly strings by error_mapper.dart.
+
+    Realtime: watch* methods use client.from(table).stream(primaryKey: ['id'])
+    which returns ordered row snapshots; the data layer maps them to
+    List<Model> before handing them to cubits.
+
+9.3 Logic layer (lib/logics/)
+    One Cubit per feature. Cubits receive repositories through the service
+    locator (with optional constructor injection for tests), expose simple
+    states (Initial/Loading/Success/Error) and are subscribed/cancelled in
+    close(). Example:
+      LoginCubit.login(email, password)
+        -> sl.authRepository.signIn(...)
+        -> emits LoginSuccessState / LoginErrorState(message)
+
+9.4 UI layer
+    screens/ hosts routable pages; widgets/ hosts composite widgets. Widgets
+    read cubits with BlocProvider/BlocBuilder/BlocConsumer and never touch the
+    data layer directly, except for:
+      * MediaUploadHelper (core/utils) for picking+uploading media
+      * NotificationService (utilities) for recording in-app notifications
+      * sl.authRepository.currentUserId / isAuthenticated for session gating
+
+================================================================================
+10. FEATURE MAP (SCREEN -> LOGIC -> DATA)
+================================================================================
+Auth & session
+  root.dart gates on sl.authRepository.isAuthenticated; splash -> home/login.
+  login_screen.dart  -> LoginCubit -> AuthRepository.signIn
+  signup_screen.dart -> SignUpCubit -> AuthRepository.signUp (+ profile row)
+  appBar logout      -> CacheHelper.removeData('email','user') +
+                        sl.authRepository.signOut -> LoginScreen
+
+Feed & posts
+  home feed          -> PostCubit (watchPosts stream)
+  post_widget        -> toggleLove/toggleSave/incrementShares helpers ->
+                        SocialRepository / PostRepository.adjustCounter
+  post_details_page  -> CommentOperations.addComment ->
+                        CommentRepository.addComment +
+                        PostRepository.adjustCounter('comments')
+  create_post        -> MediaUploadHelper.uploadMedia(posts folder) ->
+                        PostRepository.createPost
+  edit_post_page     -> uploadMedia + PostRepository.updatePost
+
+Reels
+  reel feed          -> ReelCubit (watchReels) + per-reel VideoPlayer
+  reel_widget        -> same helpers as posts; delete ->
+                        ReelRepository.deleteReel
+  create/edit_reel   -> uploadVideo (reels folder) + create/updateReel
+
+Stories
+  story_widget       -> StoryCubit (watchStories, 50-minute expiry window)
+  story_opened_widget-> StoryViewer (story_view package); love ->
+                        SocialRepository.toggleLove; delete ->
+                        StoryRepository.deleteStory
+  create_story       -> uploadImage (stories folder) + createStory
+
+Comments
+  comments_widget    -> CommentsSection UI; GetCommentCubit +
+                        CreateCommentCubit over CommentRepository
+
+Profile & social graph
+  profile pages      -> GetUserCubit/UserRepository + edit_profile_page
+  follow_container   -> toggleFollow -> SocialRepository.toggleFollow
+                        (counters via adjust_profile_counter RPC)
+
+Chat
+  chat_screen        -> MessageCubit (watchMessages realtime) +
+                        MessageRepository.sendMessage; media via
+                        MediaUploadHelper (messages folder)
+
+Notifications
+  NotificationService.notify(...) inserts a notifications row
+  (in-app only; push delivery via Edge Function - see section 14).
+
+Search
+  search_widget.searchById -> PostRepository.getPost /
+                              ReelRepository.getReel
+
+================================================================================
+11. MIGRATION NOTES (WHAT CHANGED FROM FIREBASE)
+================================================================================
+Firebase Auth    -> Supabase Auth (signInWithPassword / signUp). No password
+                    caching anywhere: the Supabase SDK persists the session;
+                    root.dart gates on isAuthenticated. Login resolves the
+                    signed-in profile's userName via watchUsers() and caches
+                    it in SharedPreferences for UI convenience.
+Firestore        -> Postgres tables (snake_case columns); .snapshots()
+                    streams replaced by Supabase Realtime .stream().
+Firebase Storage -> Supabase Storage, single public "media" bucket. Duplicated
+                    per-widget upload code consolidated into
+                    MediaUploadHelper + StorageRepository.
+Firestore doc id -> uuid v4 generated client-side (MediaUploadHelper.newId())
+                    so ids exist before insert.
+Denormalised     -> still denormalised (loves/comments/shares/followers on
+counters           parent rows) but updated atomically server-side by
+                    SECURITY DEFINER RPCs instead of client transactions.
+push tokens      -> profiles.user_token kept for future push support;
+                    notifications table powers the in-app UI now.
+google-services  -> fully removed: google-services.json deleted,
+.json               plugin/classpath stripped from android/*.gradle.
+Android build    -> modernized for Flutter 3.47: Gradle wrapper 8.14,
+                    AGP 8.11.1, Kotlin 2.2.20 (Flutter 3.47 hard-errors
+                    below Gradle 8.14 / AGP 8.11.1 / Kotlin 2.2.20).
+                    Deprecation warnings suggest 9.1.0+/9.0.1+/2.3.20+
+                    eventually; current versions still build fine.
+tests            -> test/ suite added: 19 unit tests over
+                    error_mapper, date_parser, users_model
+                    (fromMap/toMap round-trip, copyWith).
+
+
+
+================================================================================
+12. BUG FIXES APPLIED DURING THE MIGRATION
+================================================================================
+Analyzer clean-up (flutter analyze: 0 errors, 0 warnings after fixes):
+  * service_locator.dart   - singleton pattern fixed
+                             (ServiceLocator._() constructor).
+  * exceptions.dart        - NotFoundException took an explicit String
+                             message instead of an ambiguous super parameter.
+  * media_upload_helper.dart - self-referential imports inside core/
+                             corrected to ../constants/... and ../di/...
+  * auth_repository_impl.dart / storage_repository_impl.dart - local
+    AuthException/StorageException clash with Supabase's same-named types
+    resolved via `hide` on the supabase import.
+  * message_repository_impl.dart - PostgREST .or() is not supported on
+    realtime .stream(); participant filtering moved client-side (commented
+    in code).
+  * Story_model.dart import casing - file renamed/imported consistently in
+    7 files (case-sensitive filesystems on CI).
+  * Removed unused imports (follow/love/save cubits, dart:io in 4 widgets),
+    redundant `!` on non-nullable story.time in top_row.dart.
+  * reel_widget.dart / story_opened_widget.dart - all Firestore reads/writes
+    replaced with sl.reelRepository / sl.storyRepository; Firebase push
+    calls replaced with notificationService.notify().
+  * appBar.dart - stale commented Firebase logout block removed.
+
+Final-audit repairs (verification pass):
+  * 0001_init.sql had been corrupted by an earlier line-shuffling edit: the
+    messages table and the delete_old_stories() function were truncated
+    mid-definition and their tails were stranded at end-of-file, making the
+    whole migration un-applyable. Both definitions were reassembled and the
+    orphaned fragments removed. Verified complete: 10 tables, 3 RPCs, RLS
+    policies for all 10 tables, media storage bucket + policies, realtime
+    publication entries.
+  * auth_repository_impl.dart - signUp could not create the profile row when
+    Supabase email confirmation is enabled (no session exists yet), and the
+    "sign-in hook" referenced in the code comment did not exist. signIn now
+    bootstraps the missing profile (cached chosen user name -> email
+    local-part -> uuid-suffix fallback) without ever blocking sign-in.
+  * signup_screen.dart - after a confirmation-required sign-up the UI no
+    longer enters NavigationScreen without a session; it routes users to the
+    login screen with instructions and skips the RLS-protected profile
+    insert that would have failed silently.
+  * dart format was applied repo-wide (87 files, whitespace-only changes) so
+    `dart format --output=none --set-exit-if-changed lib test` now passes.
+
+Behavioural fixes:
+  * Login flow no longer stores the password; only session + userName are
+    cached (session persistence is handled by the Supabase SDK).
+  * Counters (loves/comments/shares/followers) are never written directly
+    by clients; only the RPCs adjust them, and only in the allowed
+    direction, preventing negative counts.
+  * Stories expire (delete_old_stories / deleteStoriesOlderThan) so the
+    story ring only shows fresh content.
+
+================================================================================
+13. RUNNING, TESTING AND BUILDING
+================================================================================
+  flutter pub get
+  flutter analyze                       # expect 0 errors
+  flutter test                          # unit/widget tests in test/
+  dart format --output=none --set-exit-if-changed lib test   # style gate
+  flutter run --dart-define=...         # debug run
+  flutter build apk --debug             # Android debug APK
+  flutter build apk --release           # release (needs signing config)
+
+Environment variables (see .env.example):
+  SUPABASE_URL        https://rvfwruqfoewgilethbmf.supabase.co (this project)
+  SUPABASE_ANON_KEY   public anon/publishable key (paste at run time only)
+
+Supabase deployment docs:
+  EgyGram_SUPABASE_CLIENT_CONFIG.txt   key handoff (paste your client key here)
+  EgyGram_SUPABASE_SETUP.txt           full DB deployment + testing guide
+
+SQL to apply before first run:
+  supabase/migrations/0001_init.sql
+
+Verified results (final audit pass, Flutter 3.47.7 / Dart 3.10.7):
+  flutter pub get                       OK
+  dart format --set-exit-if-changed     OK (exit 0) after a repo-wide
+                                        whitespace normalization (87 files)
+  flutter analyze                       0 errors, 0 warnings
+                                        (37 info-level lints, all pre-existing:
+                                        use_build_context_synchronously,
+                                        file_names, unnecessary_import)
+  flutter test                          19/19 tests passed
+                                        (test/core/error_mapper_test.dart,
+                                        test/core/date_parser_test.dart,
+                                        test/models/user_model_test.dart)
+  flutter build apk --debug             OK - build/app/outputs/flutter-apk/
+                                        app-debug.apk (~201 MB)
+  Runtime (emulator, Android 17 / API 37): APK installs and launches; engine
+                                        boots, localization + shared prefs
+                                        initialize, then the app fails fast
+                                        with SupabaseConfigException because
+                                        the APK was built without --dart-define
+                                        credentials (expected offline
+                                        behaviour). Live auth/DB flows need a
+                                        real Supabase project - see section 14.
+  Android build warnings: Gradle 8.14 / AGP 8.11.1 / Kotlin 2.2.20 are within
+  the supported range for Flutter 3.47.7; Flutter warns these will be dropped
+  in a future release (upgrade path: Gradle >=9.1.0, AGP >=9.0.1, Kotlin
+  >=2.3.20 - deliberately deferred because AGP 9.x needs a new-DSL migration).
+
+================================================================================
+14. KNOWN LIMITATIONS & NEXT STEPS
+================================================================================
+  * Push notifications are in-app only today. For real push, add a
+    Supabase Edge Function that reads profiles.user_token and sends to
+    FCM (Firebase Messaging can coexist with the rest of the stack if
+    re-added purely as a push client).
+  * Message realtime filtering is client-side (Supabase .stream() does not
+    support .or()); fine at small scale, revisit with a filtered view or
+    logical replication for very large chats.
+  * Story expiry is best-effort (runs when clients query); schedule the
+    delete_old_stories() RPC via pg_cron for determinism.
+  * Profiles are keyed by user_name in most UI queries; a future rename
+    feature must cascade user_name across posts/reels/stories/comments.
+  * Storage policies allow any authenticated user to delete any object in
+    the media bucket; tighten with owner-path prefixes if abuse is a
+    concern (public-read stays).
+  * google-services.json and the google-services Gradle plugin/classpath
+    have been removed from android/ (migration step completed).
+  * font_awesome_flutter was bumped 10.12.0 -> 11.0.0: Flutter made
+    IconData a final class, so v11's FaIconData (no longer implements
+    IconData) is required; every usage in the app already goes through
+    FaIcon so no call-site changes were needed.
+  * File-name lint (gridView_widget.dart, tapBar_widget.dart) left as-is to
+    avoid breaking imports across the codebase.
+  * Live end-to-end verification: the Supabase project
+    (https://rvfwruqfoewgilethbmf.supabase.co) has been created and the client
+    is prepared. Apply supabase/migrations/0001_init.sql in the Dashboard SQL
+    Editor, pass the URL/anon key via --dart-define (see
+    EgyGram_SUPABASE_SETUP.txt and EgyGram_SUPABASE_CLIENT_CONFIG.txt), then
+    exercise sign-up, sign-in, posting and messaging on a device. No
+    credentials are stored in this repository, so live DB behaviour still needs
+    a real run against the project.
+  * Migration dependency-order fix: an earlier 0001_init.sql created the
+    `notifications` table at the very END of the file, after the realtime
+    publication, RLS enablement and RLS policies already referenced it. That
+    made a first-time apply to a fresh database fail with `relation
+    "public.notifications" does not exist`. The table is now defined with the
+    others near the top; the file is still idempotent (safe to re-run).
+  * Email confirmation: when Supabase has "Confirm email" enabled, the
+    sign-up screen routes users to the login screen after account creation;
+    the profiles row is bootstrapped automatically on first sign-in
+    (auth_repository_impl._bootstrapProfileIfNeeded).
+  * Android is the only verified platform (debug APK + API 37 emulator).
+    ios/, web/, linux/, macos/, windows/ are unmodified Flutter scaffolds -
+    not maintained or tested.
+
+================================================================================
+END OF GUIDE
+================================================================================

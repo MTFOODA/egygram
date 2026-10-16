@@ -1,37 +1,28 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import '../../logics/follow/create_follow_logic/cubit.dart';
 import '../../models/follow_model.dart';
 
+/// Toggles the follow relationship.
+///
+/// Follower/following counters on both profiles are adjusted server-side by
+/// the repository (SECURITY DEFINER RPC), so no direct profile writes happen
+/// here — that previously conflicted with row-level security.
 Future<void> toggleFollow({
   required String userFollowed,
   required String currentUser,
   required bool isFollowed,
-  required int follows,
+  int follows = 0,
   required CreateFollowCubit createFollowCubit,
-  required CollectionReference collection,
-}) async
-{
-
+}) async {
   try {
-    final snapshotUserFollowed = await collection.doc(userFollowed).get();
-    final snapshotCurrentUser = await collection.doc(currentUser).get();
-    if (snapshotUserFollowed.exists && snapshotCurrentUser.exists) {
-      await collection.doc(userFollowed).update({'numberOfFollowers': follows});
-      await collection.doc(currentUser).update({'numberOfFollowing': follows});
-    } else {
-      debugPrint('Document not found user Followed: $userFollowed');
-      debugPrint('Document not found current User: $currentUser');
-    }
+    await createFollowCubit.toggleFollow(
+      FollowsModel(
+        userFollowed: userFollowed,
+        userName: currentUser,
+        followed: isFollowed,
+      ),
+    );
   } catch (e) {
-    debugPrint('Error updating document: $e');
+    debugPrint('Error toggling follow: $e');
   }
-
-  createFollowCubit.toggleFollow(
-    FollowsModel(
-      userFollowed: userFollowed,
-      userName: currentUser,
-      followed: isFollowed,
-    ),
-  );
 }

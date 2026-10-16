@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../utilities/theme_provider.dart';
 import 'gridView_widget.dart';
 
 class ProfileTapBarWidget extends StatelessWidget {
@@ -8,6 +10,8 @@ class ProfileTapBarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+
     return Flexible(
       flex: 3,
       child: SizedBox(
@@ -15,11 +19,17 @@ class ProfileTapBarWidget extends StatelessWidget {
           children: [
             TabBar(
               controller: tabController,
-              indicatorColor: Colors.black,
-              tabs: const [
-                Tab(icon: Icon(Icons.grid_on, color: Colors.black)),
-                Tab(icon: Icon(Icons.video_collection, color: Colors.black)),
-                Tab(icon: Icon(Icons.person_pin, color: Colors.black)),
+              indicatorColor: isDarkMode ? Colors.white : Colors.black,
+              tabs: [
+                Tab(
+                    icon: Icon(Icons.grid_on,
+                        color: isDarkMode ? Colors.white : Colors.black)),
+                Tab(
+                    icon: Icon(Icons.video_collection,
+                        color: isDarkMode ? Colors.white : Colors.black)),
+                Tab(
+                    icon: Icon(Icons.person_pin,
+                        color: isDarkMode ? Colors.white : Colors.black)),
               ],
             ),
             Expanded(

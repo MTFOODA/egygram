@@ -1,10 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_3/logics/follow/create_follow_logic/cubit.dart';
 import 'package:flutter_application_3/widgets/helpers/follow_helper.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
+import '../../core/di/service_locator.dart';
 import '../../logics/follow/get_follow_logic/cubit.dart';
 import '../../models/user_model.dart';
 import '../../utilities/fonts_dart.dart';
@@ -14,7 +13,8 @@ class FollowContainer extends StatefulWidget {
   final String currentUser;
   final UsersModel passedUser;
 
-  const FollowContainer({super.key, required this.currentUser, required this.passedUser});
+  const FollowContainer(
+      {super.key, required this.currentUser, required this.passedUser});
 
   @override
   FollowContainerState createState() => FollowContainerState();
@@ -23,23 +23,22 @@ class FollowContainer extends StatefulWidget {
 class FollowContainerState extends State<FollowContainer> {
   bool isFollowed = false;
   late UsersModel user;
-  final CollectionReference usersCollection = FirebaseFirestore.instance.collection('Users');
 
   @override
   void initState() {
     super.initState();
     user = widget.passedUser;
 
-    FirebaseFirestore.instance
-        .collection('Users')
-        .doc(user.userName)
-        .get()
-        .then((snapshot) {
-      if (snapshot.exists) {
+    // Refresh the follower count from Supabase (keeps the UI in sync with the
+    // server-side counter maintained by the repository RPCs).
+    sl.userRepository.getUserByName(user.userName).then((fresh) {
+      if (fresh != null && mounted) {
         setState(() {
-          widget.passedUser.numberOfFollowers = snapshot.data()?['numberOfFollowers'] ?? 0;
+          widget.passedUser.numberOfFollowers = fresh.numberOfFollowers;
         });
       }
+    }).catchError((_) {
+      // Best-effort: keep whatever count we were given.
     });
 
     // Fetch follow status
@@ -47,9 +46,11 @@ class FollowContainerState extends State<FollowContainer> {
         .read<GetFollowCubit>()
         .getFollowStatus(user.userName, widget.currentUser)
         .then((status) {
-      setState(() {
-        isFollowed = status;
-      });
+      if (mounted) {
+        setState(() {
+          isFollowed = status;
+        });
+      }
     });
   }
 
@@ -72,10 +73,11 @@ class FollowContainerState extends State<FollowContainer> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                  onPressed: (){
+                  onPressed: () {
                     setState(() {
                       isFollowed = !isFollowed;
-                      widget.passedUser.numberOfFollowers += isFollowed ? 1 : -1;
+                      widget.passedUser.numberOfFollowers +=
+                          isFollowed ? 1 : -1;
                     });
 
                     toggleFollow(
@@ -83,33 +85,35 @@ class FollowContainerState extends State<FollowContainer> {
                       currentUser: widget.currentUser,
                       isFollowed: isFollowed,
                       follows: widget.passedUser.numberOfFollowers,
-                      collection: usersCollection,
                       createFollowCubit: context.read<CreateFollowCubit>(),
                     );
                   },
-                  child: Text(
-                    isFollowed ? 'Unfollow'.tr() : 'Follow'.tr(), style: isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold
-                  ),
+                  child: Text(isFollowed ? 'Unfollow'.tr() : 'Follow'.tr(),
+                      style: isDarkMode
+                          ? AppFonts.textW16bold
+                          : AppFonts.textB16bold),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white, elevation: 0),
                   onPressed: () {},
-                  child: Text(
-                    'Message'.tr(), style: isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold
-                  ),
+                  child: Text('Message'.tr(),
+                      style: isDarkMode
+                          ? AppFonts.textW16bold
+                          : AppFonts.textB16bold),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white, elevation: 0),
                   onPressed: () {},
-                  child: Text(
-                    'Contact'.tr(), style: isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold
-                  ),
+                  child: Text('Contact'.tr(),
+                      style: isDarkMode
+                          ? AppFonts.textW16bold
+                          : AppFonts.textB16bold),
                 ),
                 IconButton(
                   icon: const Icon(Icons.person, color: Colors.black),
-                  onPressed: () {},//Todo
+                  onPressed: () {}, //Todo
                 ),
               ],
             ),

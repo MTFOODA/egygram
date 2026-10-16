@@ -1,7 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../core/utils/date_parser.dart';
 
+/// Domain model for a reel (short video), mapped to the `reels` table.
 class ReelsModel {
   final String reelID;
+  final String? userId;
   final String userName;
   final String? profileImage;
   final String? description;
@@ -13,6 +15,7 @@ class ReelsModel {
 
   ReelsModel({
     required this.reelID,
+    this.userId,
     required this.userName,
     this.profileImage,
     this.description,
@@ -25,33 +28,32 @@ class ReelsModel {
 
   Map<String, dynamic> toMap() {
     return {
-      "reelID": reelID,
-      "userName": userName,
-      "profileImage": profileImage,
+      "id": reelID,
+      if (userId != null) "user_id": userId,
+      "user_name": userName,
+      "profile_image": profileImage,
       "video": video,
       "description": description,
       "loves": loves,
       "comments": comments,
       "shares": shares,
-      "createdAt": time.toIso8601String(),
+      "created_at": time.toIso8601String(),
     };
   }
 
   factory ReelsModel.fromMap(Map<String, dynamic> map) {
     return ReelsModel(
-      reelID: map["reelID"] ?? "",
-      userName: map["userName"] ?? "",
-      description: map["description"] ?? "",
-      profileImage: map["profileImage"] ?? "",
-      loves: map["loves"]?? 0,
-      comments: map['comments']?? 0,
-      shares: map['shares']?? 0,
-      video: map["video"] ?? "",
-      time: map["createdAt"] is Timestamp
-          ? (map["createdAt"] as Timestamp).toDate()
-          : map["createdAt"] != null
-          ? DateTime.parse(map["createdAt"])
-          : DateTime.now(),
+      reelID: (map["id"] ?? map["reelID"] ?? "") as String,
+      userId: map["user_id"] as String?,
+      userName: (map["user_name"] ?? map["userName"] ?? "") as String,
+      description: (map["description"] ?? "") as String?,
+      profileImage:
+          (map["profile_image"] ?? map["profileImage"] ?? "") as String?,
+      loves: (map["loves"] ?? 0) as int,
+      comments: (map["comments"] ?? 0) as int,
+      shares: (map["shares"] ?? 0) as int,
+      video: (map["video"] ?? "") as String,
+      time: parseDate(map["created_at"] ?? map["createdAt"]),
     );
   }
 }

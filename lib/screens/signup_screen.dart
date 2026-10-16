@@ -1,9 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
+import '../core/di/service_locator.dart';
 import '../logics/auth/signup_logic/cubit.dart';
 import '../logics/auth/signup_logic/state.dart';
 import '../logics/user/create_user_logic/cubit.dart';
@@ -42,8 +42,7 @@ class SignupScreenState extends State<SignupScreen> {
   void togglePasswordVisibility() {
     setState(() {
       obscurePassword = !obscurePassword;
-      iconPassword =
-      obscurePassword ? Icons.visibility_off : Icons.visibility;
+      iconPassword = obscurePassword ? Icons.visibility_off : Icons.visibility;
     });
   }
 
@@ -63,7 +62,7 @@ class SignupScreenState extends State<SignupScreen> {
 
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (context) => SignUpCubit(FirebaseAuth.instance)),
+        BlocProvider(create: (context) => SignUpCubit()),
         BlocProvider(create: (context) => CreateUserCubit()),
       ],
       child: Scaffold(
@@ -71,23 +70,42 @@ class SignupScreenState extends State<SignupScreen> {
           listener: (context, state) {
             if (state is SignupSuccessState) {
               final userName = userController.text.trim();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Sign Up Successful!".tr())),
-              );
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => NavigationScreen(initialIndex: 0, userName: userName),
-                ),
-                    (Route<dynamic> route) => false,
-              );
+              if (sl.authRepository.isAuthenticated) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Sign Up Successful!".tr())),
+                );
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        NavigationScreen(initialIndex: 0, userName: userName),
+                  ),
+                  (Route<dynamic> route) => false,
+                );
+              } else {
+                // Email confirmation is enabled on the Supabase project: the
+                // account exists but there is no session yet. The profile row
+                // is created automatically on the first successful sign-in.
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text(
+                          "Account created! Confirm your email, then sign in."
+                              .tr())),
+                );
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const LoginScreen(),
+                  ),
+                  (Route<dynamic> route) => false,
+                );
+              }
             } else if (state is SignupErrorState) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text("Error: ${state.error}")),
               );
             }
           },
-
           builder: (context, state) {
             return Padding(
               padding: const EdgeInsets.all(20.0),
@@ -162,19 +180,24 @@ class SignupScreenState extends State<SignupScreen> {
                               return 'Please enter your password'.tr();
                             }
                             if (!containsUpperCase) {
-                              return 'Password must contain at least 1 uppercase letter'.tr();
+                              return 'Password must contain at least 1 uppercase letter'
+                                  .tr();
                             }
                             if (!containsLowerCase) {
-                              return 'Password must contain at least 1 lowercase letter'.tr();
+                              return 'Password must contain at least 1 lowercase letter'
+                                  .tr();
                             }
                             if (!containsNumber) {
-                              return 'Password must contain at least 1 number'.tr();
+                              return 'Password must contain at least 1 number'
+                                  .tr();
                             }
                             if (!containsSpecialChar) {
-                              return 'Password must contain at least 1 special character'.tr();
+                              return 'Password must contain at least 1 special character'
+                                  .tr();
                             }
                             if (!contains8Length) {
-                              return 'Password must be at least 8 characters long'.tr();
+                              return 'Password must be at least 8 characters long'
+                                  .tr();
                             }
                             return null;
                           },
@@ -197,20 +220,29 @@ class SignupScreenState extends State<SignupScreen> {
 
                               await context
                                   .read<SignUpCubit>()
-                                  .signUp(email, password);
+                                  .signUp(email, password, userName);
 
                               final currentState =
                                   context.read<SignUpCubit>().state;
                               if (currentState is SignupSuccessState) {
-                                final userModel = UsersModel(
-                                  userName: userName,
-                                  email: email,
-                                );
-                                context.read<CreateUserCubit>()
-                                    .createUser(userModel);
+                                // Only write the profile row when a session
+                                // exists; otherwise RLS denies the insert and
+                                // the row is bootstrapped at first sign-in.
+                                if (sl.authRepository.isAuthenticated) {
+                                  final userModel = UsersModel(
+                                    userName: userName,
+                                    email: email,
+                                  );
+                                  context
+                                      .read<CreateUserCubit>()
+                                      .createUser(userModel);
+                                }
                                 await CacheHelper.saveData('email', email);
+                                // Also serves as the pending user name for the
+                                // first sign-in when confirmation is required.
                                 await CacheHelper.saveData('user', userName);
-                                await CacheHelper.saveData('password', password);
+                                // Password is intentionally NOT cached; the
+                                // Supabase session is persisted by the SDK.
                               }
                             }
                           },
@@ -237,7 +269,10 @@ class SignupScreenState extends State<SignupScreen> {
                           },
                           child: Text(
                             'Already have an account? Login!'.tr(),
-                            style: isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold,  // Apply theme-based style
+                            style: isDarkMode
+                                ? AppFonts.textW16bold
+                                : AppFonts
+                                    .textB16bold, // Apply theme-based style
                           ),
                         ),
                       ],

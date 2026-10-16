@@ -10,6 +10,14 @@
 .svn/
 migrate_working_dir/
 
+# Local secrets / configuration (never commit real keys).
+# Keep .env.example tracked; ignore the real env file and the client-config
+# handoff document once a key has been pasted into it.
+.env
+.env.local
+EgyGram_SUPABASE_CLIENT_CONFIG.txt
+
+
 # IntelliJ related
 *.iml
 *.ipr
@@ -30,6 +38,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+/android/build/
 
 # Symbolication related
 app.*.symbols

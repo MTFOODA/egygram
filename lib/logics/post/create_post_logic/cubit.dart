@@ -1,22 +1,24 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/errors/error_mapper.dart';
+import '../../../../domain/repositories/post_repository.dart';
+import '../../../models/post_model.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_application_3/models/post_model.dart';
 import 'state.dart';
 
 class CreatePostCubit extends Cubit<CreatePostStates> {
-  CreatePostCubit() : super(CreatePostInitialStates());
+  final PostRepository _postRepository;
 
-  // create Post
+  CreatePostCubit({PostRepository? postRepository})
+      : _postRepository = postRepository ?? sl.postRepository,
+        super(CreatePostInitialStates());
+
   Future<void> createPost(PostsModel posts) async {
     emit(CreatePostLoadingStates());
     try {
-      await FirebaseFirestore.instance
-          .collection("Posts")
-          .doc(posts.postID)
-          .set(posts.toMap());
+      await _postRepository.createPost(posts);
       emit(CreatePostSuccessStates());
     } catch (e) {
-      emit(CreatePostErrorStates(e.toString()));
+      emit(CreatePostErrorStates(friendlyError(e)));
     }
   }
 }

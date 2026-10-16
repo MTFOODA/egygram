@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +6,7 @@ import 'package:flutter_application_3/models/post_model.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../core/di/service_locator.dart';
 import '../../logics/comments/create_comments_logic/cubit.dart';
 import '../../logics/comments/create_comments_logic/state.dart';
 import '../../logics/comments/get_comments_logic/cubit.dart';
@@ -34,7 +34,8 @@ class PostDetailsPage extends StatefulWidget {
   final String currentUser;
   final PostsModel posts;
 
-  const PostDetailsPage({super.key, required this.currentUser, required this.posts});
+  const PostDetailsPage(
+      {super.key, required this.currentUser, required this.posts});
 
   @override
   PostDetailsPageState createState() => PostDetailsPageState();
@@ -48,7 +49,6 @@ class PostDetailsPageState extends State<PostDetailsPage> {
   bool isLoved = false;
   bool isSaved = false;
   late PostsModel post;
-  final CollectionReference postsCollection = FirebaseFirestore.instance.collection('Posts');
   final NotificationService notificationService = NotificationService();
 
   @override
@@ -56,22 +56,11 @@ class PostDetailsPageState extends State<PostDetailsPage> {
     super.initState();
     post = widget.posts;
 
-    FirebaseFirestore.instance
-        .collection('Posts')
-        .doc(post.postID)
-        .get()
-        .then((snapshot) {
-      if (snapshot.exists) {
-        setState(() {
-          widget.posts.loves = snapshot.data()?['loves'] ?? 0;
-        });
-      }
-    });
-
     context
         .read<GetLoveCubit>()
         .getLoveStatus(post.postID, widget.currentUser)
         .then((status) {
+      if (!mounted) return;
       setState(() {
         isLoved = status;
       });
@@ -81,6 +70,7 @@ class PostDetailsPageState extends State<PostDetailsPage> {
         .read<GetSaveCubit>()
         .getSaveStatus(post.postID, widget.currentUser)
         .then((status) {
+      if (!mounted) return;
       setState(() {
         isSaved = status;
       });
@@ -98,7 +88,7 @@ class PostDetailsPageState extends State<PostDetailsPage> {
       final userState = context.read<GetUserCubit>().state;
       if (userState is GetUserSuccessState) {
         final user = userState.users.firstWhere(
-              (user) => user.userName == widget.currentUser,
+          (user) => user.userName == widget.currentUser,
           orElse: () => UsersModel.defaultUser(),
         );
         profileImage = user.profileImage ?? "assets/images/profile_picture.jpg";
@@ -115,24 +105,15 @@ class PostDetailsPageState extends State<PostDetailsPage> {
         comment: newComment,
         currentCommentCount: widget.posts.comments,
         postId: widget.posts.postID,
-        collection: postsCollection,
       );
-        final userSnapshot = await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(post.userName)
-            .get();
 
-        if (userSnapshot.exists) {
-          final userToken = userSnapshot.data()?['userToken'];
-
-          if (userToken != null) {
-            // Send a notification
-            notificationService.sendNotification(
-              userToken,
-              "Someone comment on your post!",
-            );
-          }
-        }
+      notificationService.notify(
+        targetUserName: post.userName,
+        actorName: widget.currentUser,
+        type: 'comment',
+        body: "Someone commented on your post!",
+        postId: widget.posts.postID,
+      );
       setState(() {
         widget.posts.comments++;
       });
@@ -143,17 +124,20 @@ class PostDetailsPageState extends State<PostDetailsPage> {
 
   Future<void> deletePost(String postID) async {
     try {
-      await FirebaseFirestore.instance.collection('Posts').doc(postID).delete();
+      await sl.postRepository.deletePost(postID);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Post deleted successfully")),
       );
       setState(() {});
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to delete post: $e")),
       );
     }
   }
+
   @override
   void dispose() {
     commentController.dispose();
@@ -185,7 +169,9 @@ class PostDetailsPageState extends State<PostDetailsPage> {
 
           return Scaffold(
             appBar: AppBar(
-              title: Text(widget.posts.userName, style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+              title: Text(widget.posts.userName,
+                  style:
+                      isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
             ),
             body: SafeArea(
               child: Column(
@@ -207,11 +193,15 @@ class PostDetailsPageState extends State<PostDetailsPage> {
                                         children: [
                                           CircleAvatar(
                                             radius: 20,
-                                            backgroundImage: widget.posts.profileImage != null
-                                                ? NetworkImage(widget.posts.profileImage!)
+                                            backgroundImage: widget
+                                                        .posts.profileImage !=
+                                                    null
+                                                ? NetworkImage(
+                                                    widget.posts.profileImage!)
                                                 : const AssetImage(
-                                                "assets/images/profile_picture.jpg"),
-                                            backgroundColor: const Color(0xFFFFF4F4),
+                                                    "assets/images/profile_picture.jpg"),
+                                            backgroundColor:
+                                                const Color(0xFFFFF4F4),
                                           ),
                                           Positioned(
                                             bottom: 0,
@@ -234,20 +224,28 @@ class PostDetailsPageState extends State<PostDetailsPage> {
                                     ),
                                     const SizedBox(width: 10),
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Text(widget.posts.userName, style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+                                        Text(widget.posts.userName,
+                                            style: isDarkMode
+                                                ? AppFonts.textW24bold
+                                                : AppFonts.textB24bold),
                                         Padding(
-                                          padding: const EdgeInsets.only(left: 15),
+                                          padding:
+                                              const EdgeInsets.only(left: 15),
                                           child: Text(
                                             "${widget.posts.time.hour}:${widget.posts.time.minute}${widget.posts.time.hour >= 12 ? " PM" : " AM"}",
-                                            style: isDarkMode ? AppFonts.textW11bold : AppFonts.textB11bold,
+                                            style: isDarkMode
+                                                ? AppFonts.textW11bold
+                                                : AppFonts.textB11bold,
                                           ),
                                         ),
                                       ],
                                     ),
                                     const Spacer(),
-                                    if (widget.currentUser == widget.posts.userName)
+                                    if (widget.currentUser ==
+                                        widget.posts.userName)
                                       PopupMenuButton<String>(
                                         icon: const FaIcon(
                                           FontAwesomeIcons.ellipsis,
@@ -258,8 +256,10 @@ class PostDetailsPageState extends State<PostDetailsPage> {
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) => BlocProvider(
-                                                  create: (context) => EditPostCubit(),
+                                                builder: (context) =>
+                                                    BlocProvider(
+                                                  create: (context) =>
+                                                      EditPostCubit(),
                                                   child: EditPostPage(
                                                     postModel: post,
                                                   ),
@@ -267,18 +267,25 @@ class PostDetailsPageState extends State<PostDetailsPage> {
                                               ),
                                             );
                                           } else if (value == 'delete') {
-                                            final confirm = await showDialog<bool>(
+                                            final confirm =
+                                                await showDialog<bool>(
                                               context: context,
                                               builder: (context) => AlertDialog(
                                                 title: Text("Delete Post".tr()),
-                                                content: Text("Are you sure you want to delete this post?".tr()),
+                                                content: Text(
+                                                    "Are you sure you want to delete this post?"
+                                                        .tr()),
                                                 actions: [
                                                   TextButton(
-                                                    onPressed: () => Navigator.pop(context, false),
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                            context, false),
                                                     child: Text("Cancel".tr()),
                                                   ),
                                                   TextButton(
-                                                    onPressed: () => Navigator.pop(context, true),
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                            context, true),
                                                     child: Text("Delete".tr()),
                                                   ),
                                                 ],
@@ -290,14 +297,21 @@ class PostDetailsPageState extends State<PostDetailsPage> {
                                             }
                                           }
                                         },
-                                        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                                        itemBuilder: (BuildContext context) =>
+                                            <PopupMenuEntry<String>>[
                                           PopupMenuItem<String>(
                                             value: 'edit',
-                                            child: Text('Edit'.tr(), style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                                            child: Text('Edit'.tr(),
+                                                style: isDarkMode
+                                                    ? AppFonts.textW14bold
+                                                    : AppFonts.textB14bold),
                                           ),
                                           PopupMenuItem<String>(
                                             value: 'delete',
-                                            child: Text('Delete'.tr(), style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                                            child: Text('Delete'.tr(),
+                                                style: isDarkMode
+                                                    ? AppFonts.textW14bold
+                                                    : AppFonts.textB14bold),
                                           ),
                                         ],
                                       ),
@@ -313,37 +327,47 @@ class PostDetailsPageState extends State<PostDetailsPage> {
                                     ),
                                     child: widget.posts.imageUrls.isNotEmpty
                                         ? PageView.builder(
-                                      itemCount: widget.posts.imageUrls.length,
-                                      itemBuilder: (context, index) {
-                                        return Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: GestureDetector(
-                                            onTap: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) => FullScreenImage(
-                                                    imageUrl: widget.posts.imageUrls[index],
+                                            itemCount:
+                                                widget.posts.imageUrls.length,
+                                            itemBuilder: (context, index) {
+                                              return Padding(
+                                                padding:
+                                                    const EdgeInsets.all(8.0),
+                                                child: GestureDetector(
+                                                  onTap: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            FullScreenImage(
+                                                          imageUrl: widget.posts
+                                                              .imageUrls[index],
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: ClipRRect(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            8),
+                                                    child: Image.network(
+                                                      widget.posts
+                                                          .imageUrls[index],
+                                                      fit: BoxFit.cover,
+                                                    ),
                                                   ),
                                                 ),
                                               );
                                             },
-                                            child: ClipRRect(
-                                              borderRadius: BorderRadius.circular(8),
-                                              child: Image.network(
-                                                widget.posts.imageUrls[index],
-                                                fit: BoxFit.cover,
-                                              ),
+                                          )
+                                        : Center(
+                                            child: Text(
+                                              "No images available".tr(),
+                                              style: isDarkMode
+                                                  ? AppFonts.textW16bold
+                                                  : AppFonts.textB16bold,
                                             ),
                                           ),
-                                        );
-                                      },
-                                    )
-                                        : Center(
-                                      child: Text(
-                                        "No images available".tr(), style: isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold,
-                                      ),
-                                    ),
                                   ),
                                 ),
                                 Padding(
@@ -355,90 +379,89 @@ class PostDetailsPageState extends State<PostDetailsPage> {
                                           isLoved
                                               ? FontAwesomeIcons.solidHeart
                                               : FontAwesomeIcons.heart,
-                                          color: isLoved ? Colors.red : Colors.black,
+                                          color: isLoved
+                                              ? Colors.red
+                                              : Colors.black,
                                         ),
                                         onPressed: () async {
-                                          final userSnapshot = await FirebaseFirestore.instance
-                                              .collection('Users')
-                                              .doc(post.userName)
-                                              .get();
-
-                                          if (userSnapshot.exists) {
-                                            final userToken = userSnapshot.data()?['userToken'];
-
-                                            if (userToken != null) {
-                                              // Send a notification
-                                              notificationService.sendNotification(
-                                                userToken,
-                                                "Someone loved your post!",
-                                              );
-                                            }
-                                          }
+                                          // In-app notification for the post author.
+                                          notificationService.notify(
+                                            targetUserName: post.userName,
+                                            actorName: widget.currentUser,
+                                            type: 'love',
+                                            body: "Someone loved your post!",
+                                            postId: post.postID,
+                                          );
                                           setState(() {
                                             isLoved = !isLoved;
-                                            widget.posts.loves += isLoved ? 1 : -1;
+                                            widget.posts.loves +=
+                                                isLoved ? 1 : -1;
                                           });
                                           toggleLove(
                                             postID: post.postID,
                                             currentUser: widget.currentUser,
                                             isLoved: isLoved,
-                                            loves: widget.posts.loves,
-                                            collection: postsCollection,
-                                            createLoveCubit: context.read<CreateLoveCubit>(),
+                                            createLoveCubit:
+                                                context.read<CreateLoveCubit>(),
                                           );
                                         },
                                         iconSize: 25,
                                       ),
-                                      Text("${widget.posts.loves}", style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                                      Text("${widget.posts.loves}",
+                                          style: isDarkMode
+                                              ? AppFonts.textW14bold
+                                              : AppFonts.textB14bold),
                                       const SizedBox(width: 10),
                                       IconButton(
-                                        icon: const FaIcon(FontAwesomeIcons.comment),
-                                        onPressed: () {setState(() {});},
+                                        icon: const FaIcon(
+                                            FontAwesomeIcons.comment),
+                                        onPressed: () {
+                                          setState(() {});
+                                        },
                                         iconSize: 25,
                                       ),
-                                      Text("${widget.posts.comments}", style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                                      Text("${widget.posts.comments}",
+                                          style: isDarkMode
+                                              ? AppFonts.textW14bold
+                                              : AppFonts.textB14bold),
                                       const SizedBox(width: 10),
                                       IconButton(
-                                        icon: const FaIcon(FontAwesomeIcons.paperPlane),
+                                        icon: const FaIcon(
+                                            FontAwesomeIcons.paperPlane),
                                         onPressed: () {
                                           setState(() {
                                             widget.posts.shares++;
                                           });
                                           incrementShares(
                                             postID: post.postID,
-                                            shares: widget.posts.shares,
-                                            collection: postsCollection,
                                           );
                                           Share.share(post.postID);
                                         },
                                         iconSize: 25,
                                       ),
-                                      Text("${widget.posts.shares}", style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                                      Text("${widget.posts.shares}",
+                                          style: isDarkMode
+                                              ? AppFonts.textW14bold
+                                              : AppFonts.textB14bold),
                                       const Spacer(),
                                       IconButton(
                                         icon: FaIcon(
                                           isSaved
                                               ? FontAwesomeIcons.solidBookmark
                                               : FontAwesomeIcons.bookmark,
-                                          color: isSaved ? Colors.red : Colors.black,
+                                          color: isSaved
+                                              ? Colors.red
+                                              : Colors.black,
                                         ),
                                         onPressed: () async {
-                                          final userSnapshot = await FirebaseFirestore.instance
-                                              .collection('Users')
-                                              .doc(post.userName)
-                                              .get();
-
-                                          if (userSnapshot.exists) {
-                                            final userToken = userSnapshot.data()?['userToken'];
-
-                                            if (userToken != null) {
-                                              // Send a notification
-                                              notificationService.sendNotification(
-                                                userToken,
-                                                "Someone loved your post!",
-                                              );
-                                            }
-                                          }
+                                          // In-app notification for the post author.
+                                          notificationService.notify(
+                                            targetUserName: post.userName,
+                                            actorName: widget.currentUser,
+                                            type: 'save',
+                                            body: "Someone saved your post!",
+                                            postId: post.postID,
+                                          );
                                           setState(() {
                                             isSaved = !isSaved;
                                           });
@@ -446,8 +469,8 @@ class PostDetailsPageState extends State<PostDetailsPage> {
                                             postID: post.postID,
                                             currentUser: widget.currentUser,
                                             isSaved: isSaved,
-                                            collection: postsCollection,
-                                            createSaveCubit: context.read<CreateSaveCubit>(),
+                                            createSaveCubit:
+                                                context.read<CreateSaveCubit>(),
                                           );
                                         },
                                         iconSize: 25,
@@ -456,27 +479,32 @@ class PostDetailsPageState extends State<PostDetailsPage> {
                                   ),
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20),
                                   child: Row(
                                     children: [
                                       const SizedBox(height: 20),
-                                      Expanded(child: ExpandableTextRow(ex: widget.posts.description ?? "")
-                                      ),
+                                      Expanded(
+                                          child: ExpandableTextRow(
+                                              ex: widget.posts.description ??
+                                                  "")),
                                     ],
                                   ),
                                 ),
                                 const Divider(),
                                 Row(
                                   mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      "Comments".tr(), style: isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold
-                                    ),
+                                    Text("Comments".tr(),
+                                        style: isDarkMode
+                                            ? AppFonts.textW16bold
+                                            : AppFonts.textB16bold),
                                     Text(
                                         "${widget.posts.comments} + ${"Comments".tr()}",
-                                        style: isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold
-                                    ),
+                                        style: isDarkMode
+                                            ? AppFonts.textW16bold
+                                            : AppFonts.textB16bold),
                                   ],
                                 ),
                                 ListView.builder(
@@ -485,20 +513,29 @@ class PostDetailsPageState extends State<PostDetailsPage> {
                                   itemCount: commentsList.length,
                                   itemBuilder: (context, index) {
                                     if (commentsList.isEmpty) {
-                                      return Center(child: Text("No comments yet".tr(), style: isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold));
+                                      return Center(
+                                          child: Text("No comments yet".tr(),
+                                              style: isDarkMode
+                                                  ? AppFonts.textW16bold
+                                                  : AppFonts.textB16bold));
                                     }
                                     final comment = commentsList[index];
-                                    return BlocBuilder<GetUserCubit, GetUsersState>(
+                                    return BlocBuilder<GetUserCubit,
+                                        GetUsersState>(
                                       builder: (context, userState) {
                                         return Card(
-                                          margin: const EdgeInsets.symmetric(vertical: 8),
+                                          margin: const EdgeInsets.symmetric(
+                                              vertical: 8),
                                           child: ListTile(
                                             leading: CircleAvatar(
-                                              backgroundColor: const Color(0xFFFFF4F4),
-                                              backgroundImage: comment.profileImage!.isNotEmpty
-                                                  ? NetworkImage(comment.profileImage!)
+                                              backgroundColor:
+                                                  const Color(0xFFFFF4F4),
+                                              backgroundImage: comment
+                                                      .profileImage!.isNotEmpty
+                                                  ? NetworkImage(
+                                                      comment.profileImage!)
                                                   : const AssetImage(
-                                                  "assets/images/profile_picture.jpg"),
+                                                      "assets/images/profile_picture.jpg"),
                                             ),
                                             title: Text(comment.userName),
                                             subtitle: Text(comment.content),

@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_3/utilities/colors_dart.dart';
 import 'package:image_picker/image_picker.dart';
@@ -102,53 +101,61 @@ class StoryUIWidgetState extends State<StoryUIWidget> {
       children: [
         Padding(
           padding: const EdgeInsets.all(20.0),
-          child: Column(
-            children: [
-              Text("Create New Story".tr(), style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
-              const SizedBox(height: 20),
-              IconButton(
-                icon: const Icon(Icons.add_photo_alternate_outlined),
-                iconSize: 50,
-                tooltip: 'Add Medias'.tr(),
-                onPressed: widget.onMediaPick,
-              ),
-              if (widget.selectedMedias.isNotEmpty)
-                Container(
-                  width: double.infinity,
-                  height: 250,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey, width: 2),
-                  ),
-                  child: buildMediaPreview(),
+          child: Center(
+            child: Column(
+              children: [
+                Text("Create New Story".tr(),
+                    style: isDarkMode
+                        ? AppFonts.textW24bold
+                        : AppFonts.textB24bold),
+                const SizedBox(height: 20),
+                IconButton(
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  iconSize: 50,
+                  tooltip: 'Add Medias'.tr(),
+                  onPressed: widget.onMediaPick,
                 ),
-              const SizedBox(height: 10),
-              InkWell(
-                onTap: () async {
-                  if (widget.selectedMedias.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Please select Medias'.tr())),
-                    );
-                  } else {
-                    setState(() {
-                      isLoading = true;
-                    });
-                    await widget.onStoryCreate();
-                    setState(() {
-                      isLoading = false;
-                    });
-                  }
-                },
-                child: Container(
-                  width: 150,
-                  height: 50,
-                  decoration: customContainerDecoration(),
-                  child: Center(
-                    child: Text("Create".tr(), style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+                if (widget.selectedMedias.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    height: 250,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey, width: 2),
+                    ),
+                    child: buildMediaPreview(),
+                  ),
+                const SizedBox(height: 10),
+                InkWell(
+                  onTap: () async {
+                    if (widget.selectedMedias.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Please select Medias'.tr())),
+                      );
+                    } else {
+                      setState(() {
+                        isLoading = true;
+                      });
+                      await widget.onStoryCreate();
+                      setState(() {
+                        isLoading = false;
+                      });
+                    }
+                  },
+                  child: Container(
+                    width: 150,
+                    height: 50,
+                    decoration: customContainerDecoration(),
+                    child: Center(
+                      child: Text("Create".tr(),
+                          style: isDarkMode
+                              ? AppFonts.textW24bold
+                              : AppFonts.textB24bold),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         if (isLoading)

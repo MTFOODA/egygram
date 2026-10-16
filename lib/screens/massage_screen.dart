@@ -31,7 +31,7 @@ class MessageScreenState extends State<MessageScreen> {
       } else {
         filteredUsers = users
             .where((user) =>
-            user['userName']!.toLowerCase().contains(query.toLowerCase()))
+                user['userName']!.toLowerCase().contains(query.toLowerCase()))
             .toList();
       }
     });
@@ -62,10 +62,10 @@ class MessageScreenState extends State<MessageScreen> {
                       setState(() {
                         users = state.users
                             .map((user) => {
-                          'userName': user.userName,
-                          'profileImage': user.profileImage ??
-                              'assets/images/profile_picture.jpg',
-                        })
+                                  'userName': user.userName,
+                                  'profileImage': user.profileImage ??
+                                      'assets/images/profile_picture.jpg',
+                                })
                             .where((user) => user['userName'] != widget.myUser)
                             .toList();
                         filteredUsers = users;
@@ -80,47 +80,49 @@ class MessageScreenState extends State<MessageScreen> {
                   },
                   child: filteredUsers.isNotEmpty
                       ? ListView.builder(
-                    itemCount: filteredUsers.length,
-                    itemBuilder: (context, index) {
-                      final user = filteredUsers[index];
-                      return Card(
-                        elevation: 5,
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundImage: user['profileImage']!
-                                .startsWith('http')
-                                ? NetworkImage(user['profileImage']!)
-                                : AssetImage(user['profileImage']!)
-                            as ImageProvider,
-                          ),
-                          title: Text(user['userName']!,
-                              style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => BlocProvider(
-                                  create: (context) => GetUserCubit()..getUsers(),
-                                  child: ChatScreen(
-                                    currentUser: widget.myUser,
-                                    selectedUser: user['userName']!,
-                                  ),
+                          itemCount: filteredUsers.length,
+                          itemBuilder: (context, index) {
+                            final user = filteredUsers[index];
+                            return Card(
+                              elevation: 5,
+                              margin: const EdgeInsets.symmetric(vertical: 8),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundImage:
+                                      user['profileImage']!.startsWith('http')
+                                          ? NetworkImage(user['profileImage']!)
+                                          : AssetImage(user['profileImage']!)
+                                              as ImageProvider,
                                 ),
+                                title: Text(user['userName']!,
+                                    style: isDarkMode
+                                        ? AppFonts.textW24bold
+                                        : AppFonts.textB24bold),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => BlocProvider(
+                                        create: (context) =>
+                                            GetUserCubit()..getUsers(),
+                                        child: ChatScreen(
+                                          currentUser: widget.myUser,
+                                          selectedUser: user['userName']!,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             );
                           },
-
-                        ),
-                      );
-                    },
-                  )
+                        )
                       : Center(
-                    child: Text(
-                      'User not found'.tr(),
-                      style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold
-                    ),
-                  ),
+                          child: Text('User not found'.tr(),
+                              style: isDarkMode
+                                  ? AppFonts.textW24bold
+                                  : AppFonts.textB24bold),
+                        ),
                 ),
               ),
             ),

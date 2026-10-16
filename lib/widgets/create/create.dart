@@ -10,14 +10,16 @@ import '../story/create_story_widget.dart';
 
 class Create extends StatefulWidget {
   final String userName;
-  const Create({super.key, required TabController tabController, required  this.userName});
+  const Create(
+      {super.key,
+      required TabController tabController,
+      required this.userName});
 
   @override
   State<Create> createState() => CreateState();
 }
 
-class CreateState extends State<Create>
-    with SingleTickerProviderStateMixin{
+class CreateState extends State<Create> with SingleTickerProviderStateMixin {
   late TabController tabController;
 
   @override
@@ -44,7 +46,8 @@ class CreateState extends State<Create>
             TabBar(
               controller: tabController,
               indicatorColor: AppColors.lightGrey,
-              labelStyle: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold,
+              labelStyle:
+                  isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold,
               tabs: [
                 Tab(text: "Post".tr()),
                 Tab(text: "Reel".tr()),

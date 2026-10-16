@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_3/widgets/story/top_row.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_story_presenter/flutter_story_presenter.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../core/di/service_locator.dart';
 import 'package:provider/provider.dart';
 import '../../logics/comments/create_comments_logic/cubit.dart';
 import '../../logics/comments/create_comments_logic/state.dart';
@@ -11,8 +11,9 @@ import '../../logics/comments/get_comments_logic/state.dart';
 import '../../logics/love/create_love_logic/cubit.dart';
 import '../../logics/love/get_love_logic/cubit.dart';
 import '../../logics/user/get_user_logic/cubit.dart';
-import '../../models/Story_model.dart';
-import 'package:flutter_story_presenter/flutter_story_presenter.dart' as story_presenter;
+import '../../models/story_model.dart';
+import 'package:flutter_story_presenter/flutter_story_presenter.dart'
+    as story_presenter;
 import '../../models/comment_model.dart';
 import '../../utilities/notification_service.dart';
 import '../../utilities/theme_provider.dart';
@@ -38,8 +39,6 @@ class StoryOpenedWidget extends StatefulWidget {
 
 class StoryOpenedWidgetState extends State<StoryOpenedWidget> {
   late PageController pageController;
-  final CollectionReference storiesCollection =
-  FirebaseFirestore.instance.collection('Stories');
   int currentUserIndex = 0;
   int currentStoryIndex = 0; // Track the current story index
 
@@ -47,7 +46,8 @@ class StoryOpenedWidgetState extends State<StoryOpenedWidget> {
   void initState() {
     super.initState();
     pageController = PageController();
-    currentUserIndex = widget.allStories.indexWhere((story) => story.userName == widget.userName);
+    currentUserIndex = widget.allStories
+        .indexWhere((story) => story.userName == widget.userName);
   }
 
   @override
@@ -82,8 +82,8 @@ class StoryOpenedWidgetState extends State<StoryOpenedWidget> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: StreamBuilder<QuerySnapshot>(
-        stream: storiesCollection.snapshots(),
+      body: StreamBuilder<List<StoriesModel>>(
+        stream: sl.storyRepository.watchStories(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -91,25 +91,26 @@ class StoryOpenedWidgetState extends State<StoryOpenedWidget> {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(child: Text('No stories available.'));
           }
 
-          final stories = snapshot.data!.docs.map((doc) {
-            return StoriesModel.fromMap(doc.data() as Map<String, dynamic>);
-          }).toList();
+          final stories = snapshot.data!;
 
           // Filter stories for the specific user
           final userStories = stories
-              .where((story) => story.userName == widget.allStories[currentUserIndex].userName)
+              .where((story) =>
+                  story.userName ==
+                  widget.allStories[currentUserIndex].userName)
               .toList();
 
           if (userStories.isEmpty) {
             return const Center(child: Text('No stories available.'));
           }
 
-          return StoryViewWithFirebase(
-            key: ValueKey(currentUserIndex), // Ensure the widget rebuilds when the user changes
+          return StoryViewer(
+            key: ValueKey(
+                currentUserIndex), // Ensure the widget rebuilds when the user changes
             stories: userStories,
             currentUser: widget.currentUser,
             allStories: widget.allStories,
@@ -124,7 +125,7 @@ class StoryOpenedWidgetState extends State<StoryOpenedWidget> {
   }
 }
 
-class StoryViewWithFirebase extends StatefulWidget {
+class StoryViewer extends StatefulWidget {
   final List<StoriesModel> stories;
   final String currentUser;
   final List<StoriesModel> allStories;
@@ -133,7 +134,7 @@ class StoryViewWithFirebase extends StatefulWidget {
   final VoidCallback onNextUser;
   final VoidCallback onPreviousUser;
 
-  const StoryViewWithFirebase({
+  const StoryViewer({
     super.key,
     required this.stories,
     required this.currentUser,
@@ -145,14 +146,12 @@ class StoryViewWithFirebase extends StatefulWidget {
   });
 
   @override
-  State<StoryViewWithFirebase> createState() => StoryViewWithFirebaseState();
+  State<StoryViewer> createState() => StoryViewerState();
 }
 
-class StoryViewWithFirebaseState extends State<StoryViewWithFirebase> {
+class StoryViewerState extends State<StoryViewer> {
   late FlutterStoryController controller;
   bool isLoved = false;
-  final CollectionReference storiesCollection =
-  FirebaseFirestore.instance.collection('Stories');
   final TextEditingController commentController = TextEditingController();
   final CreateCommentCubit createCommentCubit = CreateCommentCubit();
   final GetCommentCubit getCommentCubit = GetCommentCubit();
@@ -164,7 +163,8 @@ class StoryViewWithFirebaseState extends State<StoryViewWithFirebase> {
   void initState() {
     super.initState();
     controller = FlutterStoryController();
-    currentStoryIndex = widget.currentStoryIndex; // Initialize with the passed index
+    currentStoryIndex =
+        widget.currentStoryIndex; // Initialize with the passed index
     loadComments();
     loadCreateLove();
   }
@@ -177,10 +177,7 @@ class StoryViewWithFirebaseState extends State<StoryViewWithFirebase> {
 
   Future<void> deletePost(String storyID) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('Stories')
-          .doc(storyID)
-          .delete();
+      await sl.storyRepository.deleteStory(storyID);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Story deleted successfully")),
       );
@@ -193,14 +190,13 @@ class StoryViewWithFirebaseState extends State<StoryViewWithFirebase> {
   }
 
   void loadCreateLove() {
-    FirebaseFirestore.instance
-        .collection('Stories')
-        .doc(widget.stories.first.storyID)
-        .get()
-        .then((snapshot) {
-      if (snapshot.exists && mounted) {
+    sl.storyRepository.watchStories().listen((stories) {
+      if (stories.isEmpty || !mounted) return;
+      final match =
+          stories.where((s) => s.storyID == widget.stories.first.storyID);
+      if (match.isNotEmpty) {
         setState(() {
-          widget.stories.first.loves = snapshot.data()?['loves'] ?? 0;
+          widget.stories.first.loves = match.first.loves;
         });
       }
     });
@@ -269,7 +265,8 @@ class StoryViewWithFirebaseState extends State<StoryViewWithFirebase> {
             return const Center(child: CircularProgressIndicator());
           } else if (state is GetCommentSuccessState) {
             commentsList = state.comments
-                .where((c) => c.postId == widget.stories[currentStoryIndex].storyID)
+                .where((c) =>
+                    c.postId == widget.stories[currentStoryIndex].storyID)
                 .toList();
             widget.stories[currentStoryIndex].comments = commentsList.length;
           }
@@ -286,7 +283,8 @@ class StoryViewWithFirebaseState extends State<StoryViewWithFirebase> {
                 story: widget.stories[currentStoryIndex],
                 currentUser: widget.currentUser,
                 isDarkMode: isDarkMode,
-                onDelete: () => deletePost(widget.stories[currentStoryIndex].storyID),
+                onDelete: () =>
+                    deletePost(widget.stories[currentStoryIndex].storyID),
               ),
               footerWidget: BottomRowWidget(
                 story: widget.stories[currentStoryIndex],
@@ -301,8 +299,7 @@ class StoryViewWithFirebaseState extends State<StoryViewWithFirebase> {
                         providers: [
                           BlocProvider(
                               create: (context) => GetUserCubit()..getUsers()),
-                          BlocProvider(
-                              create: (context) => GetCommentCubit()),
+                          BlocProvider(create: (context) => GetCommentCubit()),
                           BlocProvider(
                               create: (context) => CreateCommentCubit()),
                         ],
@@ -310,7 +307,6 @@ class StoryViewWithFirebaseState extends State<StoryViewWithFirebase> {
                           postId: widget.stories.first.storyID,
                           currentUser: widget.currentUser,
                           initialCommentCount: widget.stories.first.comments,
-                          collection: storiesCollection,
                           commentController: commentController,
                         ),
                       );
@@ -318,22 +314,14 @@ class StoryViewWithFirebaseState extends State<StoryViewWithFirebase> {
                   );
                 },
                 onLovePressed: () async {
-                  final userSnapshot = await FirebaseFirestore
-                      .instance
-                      .collection('Users')
-                      .doc(widget.stories.first.userName)
-                      .get();
-
-                  if (userSnapshot.exists) {
-                    final userToken = userSnapshot.data()?['userToken'];
-
-                    if (userToken != null) {
-                      notificationService.sendNotification(
-                        userToken,
-                        "Someone loved your story!",
-                      );
-                    }
-                  }
+// In-app notification for the story author.
+                  notificationService.notify(
+                    targetUserName: widget.stories.first.userName,
+                    actorName: widget.currentUser,
+                    type: 'love',
+                    body: "Someone loved your story!",
+                    postId: widget.stories.first.storyID,
+                  );
                   setState(() {
                     isLoved = !isLoved;
                     widget.stories.first.loves += isLoved ? 1 : -1;
@@ -342,8 +330,6 @@ class StoryViewWithFirebaseState extends State<StoryViewWithFirebase> {
                     postID: widget.stories.first.storyID,
                     currentUser: widget.currentUser,
                     isLoved: isLoved,
-                    loves: widget.stories.first.loves,
-                    collection: storiesCollection,
                     createLoveCubit: context.read<CreateLoveCubit>(),
                   );
                 },

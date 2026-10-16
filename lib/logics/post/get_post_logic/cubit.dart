@@ -1,31 +1,34 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_application_3/logics/post/get_post_logic/state.dart';
+import 'dart:async';
+
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/errors/error_mapper.dart';
+import '../../../../domain/repositories/post_repository.dart';
+import '../../../models/post_model.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_application_3/models/post_model.dart';
+import 'state.dart';
 
 class GetPostCubit extends Cubit<GetPostsState> {
-  GetPostCubit() : super(GetPostInitialState());
+  final PostRepository _postRepository;
+  StreamSubscription<List<PostsModel>>? _subscription;
 
-  Stream<List<PostsModel>> getPost() {
-    return FirebaseFirestore.instance
-        .collection("Posts")
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => PostsModel.fromMap(doc.data()))
-        .toList());
-  }
+  GetPostCubit({PostRepository? postRepository})
+      : _postRepository = postRepository ?? sl.postRepository,
+        super(GetPostInitialState());
 
-  // Subscribe to snapshot changes
+  Stream<List<PostsModel>> getPost() => _postRepository.watchPosts();
+
   void subscribeToPosts() {
     emit(GetPostLoadingState());
-
-    getPost().listen(
-          (posts) {
-        emit(GetPostSuccessState(posts));
-      },
-      onError: (error) {
-        emit(GetPostErrorState(error.toString()));
-      },
+    _subscription?.cancel();
+    _subscription = getPost().listen(
+      (posts) => emit(GetPostSuccessState(posts)),
+      onError: (error) => emit(GetPostErrorState(friendlyError(error))),
     );
+  }
+
+  @override
+  Future<void> close() {
+    _subscription?.cancel();
+    return super.close();
   }
 }

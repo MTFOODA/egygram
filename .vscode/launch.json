@@ -1,0 +1,30 @@
+{
+  // EgyGram's Supabase URL and anon key are baked into SupabaseConfig as
+  // String.fromEnvironment defaults, so a plain launch is already correctly
+  // configured (no --dart-define required). These configs run the app as-is.
+  //
+  // To point the app at a DIFFERENT Supabase project/environment, add
+  // --dart-define overrides, e.g.:
+  //   "args": [
+  //     "--dart-define=SUPABASE_URL=https://other.supabase.co",
+  //     "--dart-define=SUPABASE_ANON_KEY=<other-anon-key>"
+  //   ]
+  // Do NOT pass an empty --dart-define=SUPABASE_ANON_KEY= (that overrides the
+  // baked-in default with an empty value and the app will refuse to start).
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "EgyGram (debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart"
+    },
+    {
+      "name": "EgyGram (profile)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "profile",
+      "program": "lib/main.dart"
+    }
+  ]
+}

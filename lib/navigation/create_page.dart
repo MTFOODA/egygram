@@ -3,7 +3,7 @@ import 'package:flutter_application_3/widgets/create/create.dart';
 
 class CreatePage extends StatefulWidget {
   final String currentUser;
-  const CreatePage({super.key, required  this.currentUser});
+  const CreatePage({super.key, required this.currentUser});
 
   @override
   State<CreatePage> createState() => _CreatePageState();

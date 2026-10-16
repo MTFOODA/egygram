@@ -24,11 +24,13 @@ class SavedPostsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Saved Posts".tr(),style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+        title: Text("Saved Posts".tr(),
+            style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
       ),
       body: MultiBlocProvider(
         providers: [
-          BlocProvider(create: (context) => GetSaveCubit()..getSaves(currentUser)),
+          BlocProvider(
+              create: (context) => GetSaveCubit()..getSaves(currentUser)),
           BlocProvider(create: (context) => GetPostCubit()..subscribeToPosts()),
           BlocProvider(create: (context) => GetLoveCubit()),
           BlocProvider(create: (context) => CreateLoveCubit()),
@@ -45,11 +47,15 @@ class SavedPostsScreen extends StatelessWidget {
 
               if (currentUserSaves.isEmpty) {
                 return Center(
-                  child: Text('No saved posts found'.tr(),style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+                  child: Text('No saved posts found'.tr(),
+                      style: isDarkMode
+                          ? AppFonts.textW24bold
+                          : AppFonts.textB24bold),
                 );
               }
 
-              final savedPostIds = currentUserSaves.map((save) => save.postId).toList();
+              final savedPostIds =
+                  currentUserSaves.map((save) => save.postId).toList();
               final postIdsText = savedPostIds.join(' , ');
 
               return BlocBuilder<GetPostCubit, GetPostsState>(
@@ -86,7 +92,10 @@ class SavedPostsScreen extends StatelessWidget {
                     );
                   } else {
                     return Center(
-                      child: Text('No posts found'.tr(),style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+                      child: Text('No posts found'.tr(),
+                          style: isDarkMode
+                              ? AppFonts.textW24bold
+                              : AppFonts.textB24bold),
                     );
                   }
                 },

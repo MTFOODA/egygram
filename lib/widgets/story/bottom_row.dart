@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../models/Story_model.dart';
+import '../../models/story_model.dart';
 import '../../utilities/fonts_dart.dart';
 
 class BottomRowWidget extends StatelessWidget {

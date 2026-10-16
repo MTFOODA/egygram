@@ -19,7 +19,8 @@ class ReelPage extends StatelessWidget {
   final String currentUser;
   final String? reelId;
 
-  const ReelPage({super.key, required this.currentUser, this.reelId}); // Modify this line
+  const ReelPage(
+      {super.key, required this.currentUser, this.reelId}); // Modify this line
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +52,9 @@ class ReelPage extends StatelessWidget {
                 return Center(
                   child: Text(
                     'No Reels found'.tr(),
-                    style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold,
+                    style: isDarkMode
+                        ? AppFonts.textW24bold
+                        : AppFonts.textB24bold,
                   ),
                 );
               }
@@ -66,7 +69,8 @@ class ReelPage extends StatelessWidget {
               return Center(
                 child: Text(
                   'No Reels found'.tr(),
-                  style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold,
+                  style:
+                      isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold,
                 ),
               );
             }
@@ -102,8 +106,11 @@ class ReelPageViewState extends State<ReelPageView> {
     super.initState();
     // Find the index of the reel with the given ID
     if (widget.initialReelId != null) {
-      _initialPage = widget.reels.indexWhere((reel) => reel.reelID == widget.initialReelId);
-      if (_initialPage == -1) _initialPage = 0; // Fallback to the first reel if not found
+      _initialPage = widget.reels
+          .indexWhere((reel) => reel.reelID == widget.initialReelId);
+      if (_initialPage == -1) {
+        _initialPage = 0; // Fallback to the first reel if not found
+      }
     }
     _pageController = PageController(initialPage: _initialPage);
   }

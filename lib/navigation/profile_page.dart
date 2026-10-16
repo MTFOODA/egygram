@@ -59,14 +59,12 @@ class ProfilePageState extends State<ProfilePage>
               return current is GetUserSuccessState ||
                   (previous is GetUserSuccessState &&
                       current is GetUserSuccessState &&
-                      previous.users
-                          .firstWhere(
+                      previous.users.firstWhere(
                             (user) => user.userName == widget.currentUser,
-                        orElse: () => UsersModel.defaultUser(),
-                      ) !=
-                          current.users
-                              .firstWhere(
-                                (user) => user.userName == widget.currentUser,
+                            orElse: () => UsersModel.defaultUser(),
+                          ) !=
+                          current.users.firstWhere(
+                            (user) => user.userName == widget.currentUser,
                             orElse: () => UsersModel.defaultUser(),
                           ));
             },
@@ -75,14 +73,19 @@ class ProfilePageState extends State<ProfilePage>
                 return const Center(child: CircularProgressIndicator());
               } else if (state is GetUserSuccessState) {
                 final user = state.users.firstWhere(
-                      (user) => user.userName == widget.currentUser,
+                  (user) => user.userName == widget.currentUser,
                   orElse: () => UsersModel.defaultUser(),
                 );
-                return Text(user.userName, style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold);
+                return Text(user.userName,
+                    style: isDarkMode
+                        ? AppFonts.textW24bold
+                        : AppFonts.textB24bold);
               } else if (state is GetUserErrorState) {
                 return const Text("Error");
               }
-              return Text("Profile".tr(),style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold);
+              return Text("Profile".tr(),
+                  style:
+                      isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold);
             },
           ),
           actions: [
@@ -97,12 +100,11 @@ class ProfilePageState extends State<ProfilePage>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => MultiBlocProvider(
-                        providers: [
-                          BlocProvider(create: (context) => LogoutCubit()),
-                          BlocProvider(create: (context) => GetUserCubit()..getUsers()),
-                        ],
-                        child: SettingsScreen(currentUser: widget.currentUser)),
+                    builder: (context) => MultiBlocProvider(providers: [
+                      BlocProvider(create: (context) => LogoutCubit()),
+                      BlocProvider(
+                          create: (context) => GetUserCubit()..getUsers()),
+                    ], child: SettingsScreen(currentUser: widget.currentUser)),
                   ),
                 );
               },

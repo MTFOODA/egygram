@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_3/models/reel_model.dart';
@@ -7,6 +6,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
+import '../../core/di/service_locator.dart';
 import '../../logics/comments/create_comments_logic/cubit.dart';
 import '../../logics/comments/create_comments_logic/state.dart';
 import '../../logics/comments/get_comments_logic/cubit.dart';
@@ -31,11 +31,7 @@ class ReelWidget extends StatefulWidget {
   final ReelsModel reels;
   final String currentUser;
 
-  const ReelWidget({
-    super.key,
-    required this.reels,
-    required this.currentUser
-  });
+  const ReelWidget({super.key, required this.reels, required this.currentUser});
 
   @override
   State<ReelWidget> createState() => ReelWidgetState();
@@ -46,8 +42,6 @@ class ReelWidgetState extends State<ReelWidget> {
   late ReelsModel reel;
   bool isLoved = false;
   bool isSaved = false;
-  final CollectionReference reelsCollection =
-  FirebaseFirestore.instance.collection('Reels');
   TextEditingController commentController = TextEditingController();
   List<CommentsModel> commentsList = [];
   final CreateCommentCubit createCommentCubit = CreateCommentCubit();
@@ -59,16 +53,17 @@ class ReelWidgetState extends State<ReelWidget> {
     super.initState();
     reel = widget.reels;
 
-    FirebaseFirestore.instance
-        .collection('Reels')
-        .doc(reel.reelID)
-        .get()
-        .then((snapshot) {
-      if (snapshot.exists) {
+    // Refresh the love counter from Supabase (server-side RPC maintained).
+    sl.reelRepository.getReel(reel.reelID).then((fresh) {
+      if (fresh != null && mounted) {
         setState(() {
-          widget.reels.loves = snapshot.data()?['loves'] ?? 0;
+          widget.reels.loves = fresh.loves;
+          widget.reels.comments = fresh.comments;
+          widget.reels.shares = fresh.shares;
         });
       }
+    }).catchError((_) {
+      // Best-effort: keep the counts we were given.
     });
 
     context
@@ -89,18 +84,19 @@ class ReelWidgetState extends State<ReelWidget> {
       });
     });
 
-    videoController = VideoPlayerController.networkUrl(Uri.parse(widget.reels.video))
-      ..initialize().then((_) {
-        setState(() {});
-        videoController.play();
-        videoController.setLooping(true);
-      });
+    videoController =
+        VideoPlayerController.networkUrl(Uri.parse(widget.reels.video))
+          ..initialize().then((_) {
+            setState(() {});
+            videoController.play();
+            videoController.setLooping(true);
+          });
     loadComments();
   }
 
   Future<void> deletePost(String reelID) async {
     try {
-      await FirebaseFirestore.instance.collection('Reels').doc(reelID).delete();
+      await sl.reelRepository.deleteReel(reelID);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Reel deleted successfully")),
       );
@@ -159,8 +155,11 @@ class ReelWidgetState extends State<ReelWidget> {
           return Scaffold(
             backgroundColor: AppColors.lightGrey,
             appBar: AppBar(
-              backgroundColor: AppColors.trans,
-              title: Text("Reels".tr(), style: AppFonts.textB24bold)),
+                backgroundColor: AppColors.trans,
+                title: Text("Reels".tr(),
+                    style: isDarkMode
+                        ? AppFonts.textW24bold
+                        : AppFonts.textB24bold)),
             body: Stack(
               children: [
                 Center(
@@ -168,12 +167,12 @@ class ReelWidgetState extends State<ReelWidget> {
                     width: double.maxFinite,
                     child: videoController.value.isInitialized
                         ? GestureDetector(
-                      onTap: togglePlayPause,
-                      child: AspectRatio(
-                        aspectRatio: videoController.value.aspectRatio,
-                        child: VideoPlayer(videoController),
-                      ),
-                    )
+                            onTap: togglePlayPause,
+                            child: AspectRatio(
+                              aspectRatio: videoController.value.aspectRatio,
+                              child: VideoPlayer(videoController),
+                            ),
+                          )
                         : const Center(child: CircularProgressIndicator()),
                   ),
                 ),
@@ -194,22 +193,28 @@ class ReelWidgetState extends State<ReelWidget> {
                                   children: [
                                     CircleAvatar(
                                       radius: 20.0,
-                                      backgroundImage: widget.reels.profileImage!.isNotEmpty
+                                      backgroundImage: widget
+                                              .reels.profileImage!.isNotEmpty
                                           ? NetworkImage(
-                                          widget.reels.profileImage!)
+                                              widget.reels.profileImage!)
                                           : const AssetImage(
-                                          'assets/images/profile_picture.jpg'),
+                                              'assets/images/profile_picture.jpg'),
                                       backgroundColor: const Color(0xFFFFF4F4),
                                     ),
                                     const SizedBox(width: 10),
                                     Column(
                                       crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Text(widget.reels.userName, style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+                                        Text(widget.reels.userName,
+                                            style: isDarkMode
+                                                ? AppFonts.textW24bold
+                                                : AppFonts.textB24bold),
                                         Text(
-                                          "${widget.reels.time.hour}:${widget.reels.time.minute.toString().padLeft(2, '0')} ${widget.reels.time.hour >= 12 ? "PM" : "AM"}", style: isDarkMode ? AppFonts.textW11bold : AppFonts.textB11bold
-                                        ),
+                                            "${widget.reels.time.hour}:${widget.reels.time.minute.toString().padLeft(2, '0')} ${widget.reels.time.hour >= 12 ? "PM" : "AM"}",
+                                            style: isDarkMode
+                                                ? AppFonts.textW11bold
+                                                : AppFonts.textB11bold),
                                       ],
                                     ),
                                   ],
@@ -240,22 +245,14 @@ class ReelWidgetState extends State<ReelWidget> {
                                   color: isLoved ? Colors.red : Colors.white,
                                 ),
                                 onPressed: () async {
-                                  final userSnapshot = await FirebaseFirestore.instance
-                                      .collection('Users')
-                                      .doc(reel.userName)
-                                      .get();
-
-                                  if (userSnapshot.exists) {
-                                    final userToken = userSnapshot.data()?['userToken'];
-
-                                    if (userToken != null) {
-                                      // Send a notification
-                                      notificationService.sendNotification(
-                                        userToken,
-                                        "Someone loved your Reel!",
-                                      );
-                                    }
-                                  }
+                                  // In-app notification for the reel author.
+                                  notificationService.notify(
+                                    targetUserName: reel.userName,
+                                    actorName: widget.currentUser,
+                                    type: 'love',
+                                    body: "Someone loved your Reel!",
+                                    postId: reel.reelID,
+                                  );
                                   setState(() {
                                     isLoved = !isLoved;
                                     widget.reels.loves += isLoved ? 1 : -1;
@@ -264,17 +261,19 @@ class ReelWidgetState extends State<ReelWidget> {
                                     postID: reel.reelID,
                                     currentUser: widget.currentUser,
                                     isLoved: isLoved,
-                                    loves: widget.reels.loves,
-                                    collection: reelsCollection,
                                     createLoveCubit:
-                                    context.read<CreateLoveCubit>(),
+                                        context.read<CreateLoveCubit>(),
                                   );
                                 },
                                 iconSize: 25,
                               ),
-                              Text("${widget.reels.loves}", style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                              Text("${widget.reels.loves}",
+                                  style: isDarkMode
+                                      ? AppFonts.textW14bold
+                                      : AppFonts.textB14bold),
                               IconButton(
-                                icon: const FaIcon(FontAwesomeIcons.comment, color: Colors.white),
+                                icon: const FaIcon(FontAwesomeIcons.comment,
+                                    color: Colors.white),
                                 onPressed: () {
                                   showModalBottomSheet(
                                     context: context,
@@ -283,7 +282,7 @@ class ReelWidgetState extends State<ReelWidget> {
                                         providers: [
                                           BlocProvider(
                                               create: (context) =>
-                                              GetUserCubit()..getUsers()),
+                                                  GetUserCubit()..getUsers()),
                                           BlocProvider(
                                               create: (context) =>
                                                   GetCommentCubit()),
@@ -295,8 +294,7 @@ class ReelWidgetState extends State<ReelWidget> {
                                           postId: widget.reels.reelID,
                                           currentUser: widget.currentUser,
                                           initialCommentCount:
-                                          widget.reels.comments,
-                                          collection: reelsCollection,
+                                              widget.reels.comments,
                                           commentController: commentController,
                                         ),
                                       );
@@ -305,23 +303,28 @@ class ReelWidgetState extends State<ReelWidget> {
                                 },
                                 iconSize: 25,
                               ),
-                              Text("${widget.reels.comments}", style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                              Text("${widget.reels.comments}",
+                                  style: isDarkMode
+                                      ? AppFonts.textW14bold
+                                      : AppFonts.textB14bold),
                               IconButton(
-                                icon: const FaIcon(FontAwesomeIcons.paperPlane, color: Colors.white),
+                                icon: const FaIcon(FontAwesomeIcons.paperPlane,
+                                    color: Colors.white),
                                 onPressed: () {
                                   setState(() {
                                     widget.reels.shares++;
                                   });
                                   incrementShares(
                                     postID: reel.reelID,
-                                    shares: widget.reels.shares,
-                                    collection: reelsCollection,
                                   );
                                   Share.share(reel.reelID);
                                 },
                                 iconSize: 25,
                               ),
-                              Text("${widget.reels.shares}", style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                              Text("${widget.reels.shares}",
+                                  style: isDarkMode
+                                      ? AppFonts.textW14bold
+                                      : AppFonts.textB14bold),
                               IconButton(
                                 icon: FaIcon(
                                   isSaved
@@ -330,22 +333,14 @@ class ReelWidgetState extends State<ReelWidget> {
                                   color: isSaved ? Colors.red : Colors.white,
                                 ),
                                 onPressed: () async {
-                                  final userSnapshot = await FirebaseFirestore.instance
-                                      .collection('Users')
-                                      .doc(reel.userName)
-                                      .get();
-
-                                  if (userSnapshot.exists) {
-                                    final userToken = userSnapshot.data()?['userToken'];
-
-                                    if (userToken != null) {
-                                      // Send a notification
-                                      notificationService.sendNotification(
-                                        userToken,
-                                        "Someone saved your Reel!",
-                                      );
-                                    }
-                                  }
+                                  // In-app notification for the reel author.
+                                  notificationService.notify(
+                                    targetUserName: reel.userName,
+                                    actorName: widget.currentUser,
+                                    type: 'save',
+                                    body: "Someone saved your Reel!",
+                                    postId: reel.reelID,
+                                  );
                                   setState(() {
                                     isSaved = !isSaved;
                                   });
@@ -353,28 +348,26 @@ class ReelWidgetState extends State<ReelWidget> {
                                     postID: reel.reelID,
                                     currentUser: widget.currentUser,
                                     isSaved: isSaved,
-                                    collection: reelsCollection,
                                     createSaveCubit:
-                                    context.read<CreateSaveCubit>(),
+                                        context.read<CreateSaveCubit>(),
                                   );
                                 },
                                 iconSize: 25,
                               ),
                               if (widget.currentUser == widget.reels.userName)
                                 PopupMenuButton<String>(
-                                  icon: const FaIcon(
-                                    FontAwesomeIcons.ellipsis,
-                                    size: 25,
-                                    color: Colors.white
-                                  ),
+                                  icon: const FaIcon(FontAwesomeIcons.ellipsis,
+                                      size: 25, color: Colors.white),
                                   onSelected: (String value) async {
                                     if (value == 'edit') {
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
                                           builder: (context) => BlocProvider(
-                                            create: (context) => EditReelCubit(),
-                                            child: EditReelPage(reelModel: reel),
+                                            create: (context) =>
+                                                EditReelCubit(),
+                                            child:
+                                                EditReelPage(reelModel: reel),
                                           ),
                                         ),
                                       );
@@ -383,14 +376,18 @@ class ReelWidgetState extends State<ReelWidget> {
                                         context: context,
                                         builder: (context) => AlertDialog(
                                           title: Text("Delete Post".tr()),
-                                          content: Text("Are you sure you want to delete this reel ?".tr()),
+                                          content: Text(
+                                              "Are you sure you want to delete this reel ?"
+                                                  .tr()),
                                           actions: [
                                             TextButton(
-                                              onPressed: () => Navigator.pop(context, false),
+                                              onPressed: () =>
+                                                  Navigator.pop(context, false),
                                               child: Text("Cancel".tr()),
                                             ),
                                             TextButton(
-                                              onPressed: () => Navigator.pop(context, true),
+                                              onPressed: () =>
+                                                  Navigator.pop(context, true),
                                               child: Text("Delete".tr()),
                                             ),
                                           ],
@@ -399,16 +396,24 @@ class ReelWidgetState extends State<ReelWidget> {
 
                                       if (confirm == true) {
                                         await deletePost(reel.reelID);
-                                      }                                              }
+                                      }
+                                    }
                                   },
-                                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                                  itemBuilder: (BuildContext context) =>
+                                      <PopupMenuEntry<String>>[
                                     PopupMenuItem<String>(
                                       value: 'edit',
-                                      child: Text('Edit'.tr(), style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                                      child: Text('Edit'.tr(),
+                                          style: isDarkMode
+                                              ? AppFonts.textW14bold
+                                              : AppFonts.textB14bold),
                                     ),
                                     PopupMenuItem<String>(
                                       value: 'delete',
-                                      child: Text('Delete'.tr(), style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                                      child: Text('Delete'.tr(),
+                                          style: isDarkMode
+                                              ? AppFonts.textW14bold
+                                              : AppFonts.textB14bold),
                                     ),
                                   ],
                                 ),

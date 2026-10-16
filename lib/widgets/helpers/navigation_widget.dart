@@ -12,43 +12,57 @@ import '../../utilities/theme_provider.dart';
 class CustomNavigationBar extends StatelessWidget {
   final ValueChanged<int> onTap;
 
-  const CustomNavigationBar(
-      {super.key, required this.onTap, required int currentIndex});
+  const CustomNavigationBar({super.key, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        final isDarkMode = themeProvider.isDarkMode;
 
-    return CurvedNavigationBar(
-      backgroundColor: AppColors.trans,
-      items: [
-        CurvedNavigationBarItem(
-            child: const FaIcon(FontAwesomeIcons.house),
-            label: 'Home'.tr(),
-            labelStyle:
-                isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold),
-        CurvedNavigationBarItem(
-            child: const FaIcon(FontAwesomeIcons.magnifyingGlass),
-            label: 'Search'.tr(),
-            labelStyle:
-                isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold),
-        CurvedNavigationBarItem(
-            child: const FaIcon(FontAwesomeIcons.squarePlus),
-            label: 'Create'.tr(),
-            labelStyle:
-                isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold),
-        CurvedNavigationBarItem(
-            child: const FaIcon(FontAwesomeIcons.clapperboard),
-            label: 'Reels'.tr(),
-            labelStyle:
-                isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold),
-        CurvedNavigationBarItem(
-            child: const FaIcon(FontAwesomeIcons.user),
-            label: 'Profile'.tr(),
-            labelStyle:
-                isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold),
-      ],
-      onTap: onTap,
+        return CurvedNavigationBar(
+          backgroundColor: AppColors.trans,
+          color: isDarkMode ? Colors.black : Colors.white,
+          items: [
+            CurvedNavigationBarItem(
+              child: FaIcon(FontAwesomeIcons.house,
+                  color: isDarkMode ? Colors.white : Colors.black),
+              label: 'Home'.tr(),
+              labelStyle:
+                  isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold,
+            ),
+            CurvedNavigationBarItem(
+              child: FaIcon(FontAwesomeIcons.magnifyingGlass,
+                  color: isDarkMode ? Colors.white : Colors.black),
+              label: 'Search'.tr(),
+              labelStyle:
+                  isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold,
+            ),
+            CurvedNavigationBarItem(
+              child: FaIcon(FontAwesomeIcons.squarePlus,
+                  color: isDarkMode ? Colors.white : Colors.black),
+              label: 'Create'.tr(),
+              labelStyle:
+                  isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold,
+            ),
+            CurvedNavigationBarItem(
+              child: FaIcon(FontAwesomeIcons.clapperboard,
+                  color: isDarkMode ? Colors.white : Colors.black),
+              label: 'Reels'.tr(),
+              labelStyle:
+                  isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold,
+            ),
+            CurvedNavigationBarItem(
+              child: FaIcon(FontAwesomeIcons.user,
+                  color: isDarkMode ? Colors.white : Colors.black),
+              label: 'Profile'.tr(),
+              labelStyle:
+                  isDarkMode ? AppFonts.textW16bold : AppFonts.textB16bold,
+            ),
+          ],
+          onTap: onTap,
+        );
+      },
     );
   }
 }

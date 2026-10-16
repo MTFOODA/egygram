@@ -23,7 +23,8 @@ class PasswordStrengthRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
-    TextStyle textStyle = isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold;
+    TextStyle textStyle =
+        isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,

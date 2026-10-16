@@ -9,7 +9,7 @@
 
 
     <application
-        android:label="flutter_application_3"
+        android:label="EgyGram"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

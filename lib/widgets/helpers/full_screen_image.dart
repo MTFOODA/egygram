@@ -29,7 +29,10 @@ class FullScreenImage extends StatelessWidget {
                 items: [
                   PopupMenuItem<String>(
                     value: 'save',
-                    child: Text('Save Image'.tr(), style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+                    child: Text('Save Image'.tr(),
+                        style: isDarkMode
+                            ? AppFonts.textW24bold
+                            : AppFonts.textB24bold),
                   ),
                 ],
               );

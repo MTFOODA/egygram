@@ -1,26 +1,32 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
+
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/errors/error_mapper.dart';
+import '../../../../domain/repositories/comment_repository.dart';
 import '../../../models/comment_model.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'state.dart';
 
 class GetCommentCubit extends Cubit<GetCommentsState> {
-  GetCommentCubit() : super(GetCommentInitialState());
+  final CommentRepository _commentRepository;
+  StreamSubscription<List<CommentsModel>>? _subscription;
+
+  GetCommentCubit({CommentRepository? commentRepository})
+      : _commentRepository = commentRepository ?? sl.commentRepository,
+        super(GetCommentInitialState());
 
   void getComments(String postId) {
     emit(GetCommentLoadingState());
+    _subscription?.cancel();
+    _subscription = _commentRepository.watchComments(postId).listen(
+          (comments) => emit(GetCommentSuccessState(comments)),
+          onError: (error) => emit(GetCommentErrorState(friendlyError(error))),
+        );
+  }
 
-    FirebaseFirestore.instance
-        .collection('Comments')
-        .where('postId', isEqualTo: postId)
-        .snapshots()
-        .listen((snapshot) {
-      final comments = snapshot.docs.map((doc) {
-        return CommentsModel.fromMap(doc.data());
-      }).toList();
-
-      emit(GetCommentSuccessState(comments));
-    }, onError: (error) {
-      emit(GetCommentErrorState(error.toString()));
-    });
+  @override
+  Future<void> close() {
+    _subscription?.cancel();
+    return super.close();
   }
 }

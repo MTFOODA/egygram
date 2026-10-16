@@ -9,7 +9,7 @@ import '../../logics/love/get_love_logic/cubit.dart';
 import '../../logics/story/get_story_logic/cubit.dart';
 import '../../logics/user/get_user_logic/cubit.dart';
 import '../../logics/user/get_user_logic/state.dart';
-import '../../models/Story_model.dart';
+import '../../models/story_model.dart';
 import '../../models/user_model.dart';
 import '../../utilities/fonts_dart.dart';
 import '../../utilities/theme_provider.dart';
@@ -45,7 +45,7 @@ class StoryWidgetState extends State<StoryWidget> {
     final userState = context.read<GetUserCubit>().state;
     if (userState is GetUserSuccessState) {
       final user = userState.users.firstWhere(
-            (user) => user.userName == widget.currentUser,
+        (user) => user.userName == widget.currentUser,
         orElse: () => UsersModel.defaultUser(),
       );
       setState(() {
@@ -95,11 +95,11 @@ class StoryWidgetState extends State<StoryWidget> {
                             child: CircleAvatar(
                               radius: 29.0,
                               backgroundImage: (profileImage != null &&
-                                  profileImage!.isNotEmpty)
+                                      profileImage!.isNotEmpty)
                                   ? NetworkImage(profileImage!)
                                   : const AssetImage(
-                                "assets/images/profile_picture.jpg",
-                              ) as ImageProvider,
+                                      "assets/images/profile_picture.jpg",
+                                    ) as ImageProvider,
                             ),
                           ),
                           const Positioned(
@@ -121,7 +121,10 @@ class StoryWidgetState extends State<StoryWidget> {
                           ),
                         ],
                       ),
-                      Text(widget.currentUser, style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold),
+                      Text(widget.currentUser,
+                          style: isDarkMode
+                              ? AppFonts.textW14bold
+                              : AppFonts.textB14bold),
                     ],
                   ),
                 ),
@@ -138,7 +141,7 @@ class StoryWidgetState extends State<StoryWidget> {
                             providers: [
                               BlocProvider(
                                   create: (context) =>
-                                  GetStoryCubit()..subscribeToStories()),
+                                      GetStoryCubit()..subscribeToStories()),
                               BlocProvider(create: (context) => GetLoveCubit()),
                               BlocProvider(
                                   create: (context) => CreateLoveCubit()),
@@ -150,7 +153,10 @@ class StoryWidgetState extends State<StoryWidget> {
                             child: StoryOpenedWidget(
                               currentUser: widget.currentUser,
                               userName: widget.currentUser,
-                              allStories: [widget.currentUserStory!, ...widget.otherStories],
+                              allStories: [
+                                widget.currentUserStory!,
+                                ...widget.otherStories
+                              ],
                             ),
                           ),
                         ),
@@ -164,18 +170,24 @@ class StoryWidgetState extends State<StoryWidget> {
                           backgroundColor: Colors.redAccent,
                           child: CircleAvatar(
                             radius: 29.0,
-                            backgroundImage: (widget.currentUserStory!.profileImage != null &&
-                                widget.currentUserStory!.profileImage!.isNotEmpty)
-                                ? NetworkImage(widget.currentUserStory!.profileImage!)
-                                : const AssetImage(
-                              "assets/images/profile_picture.jpg",
-                            ) as ImageProvider,
+                            backgroundImage:
+                                (widget.currentUserStory!.profileImage !=
+                                            null &&
+                                        widget.currentUserStory!.profileImage!
+                                            .isNotEmpty)
+                                    ? NetworkImage(
+                                        widget.currentUserStory!.profileImage!)
+                                    : const AssetImage(
+                                        "assets/images/profile_picture.jpg",
+                                      ) as ImageProvider,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           widget.currentUser,
-                          style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold,
+                          style: isDarkMode
+                              ? AppFonts.textW14bold
+                              : AppFonts.textB14bold,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
@@ -194,7 +206,7 @@ class StoryWidgetState extends State<StoryWidget> {
                             providers: [
                               BlocProvider(
                                   create: (context) =>
-                                  GetStoryCubit()..subscribeToStories()),
+                                      GetStoryCubit()..subscribeToStories()),
                               BlocProvider(create: (context) => GetLoveCubit()),
                               BlocProvider(
                                   create: (context) => CreateLoveCubit()),
@@ -206,7 +218,12 @@ class StoryWidgetState extends State<StoryWidget> {
                             child: StoryOpenedWidget(
                               currentUser: widget.currentUser,
                               userName: story.userName,
-                              allStories: [widget.currentUserStory!,...widget.otherStories],
+                              allStories: widget.currentUserStory != null
+                                  ? [
+                                      widget.currentUserStory!,
+                                      ...widget.otherStories
+                                    ]
+                                  : widget.otherStories,
                             ),
                           ),
                         ),
@@ -221,17 +238,19 @@ class StoryWidgetState extends State<StoryWidget> {
                           child: CircleAvatar(
                             radius: 29.0,
                             backgroundImage: (story.profileImage != null &&
-                                story.profileImage!.isNotEmpty)
+                                    story.profileImage!.isNotEmpty)
                                 ? NetworkImage(story.profileImage!)
                                 : const AssetImage(
-                              "assets/images/profile_picture.jpg",
-                            ) as ImageProvider,
+                                    "assets/images/profile_picture.jpg",
+                                  ) as ImageProvider,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           story.userName,
-                          style: isDarkMode ? AppFonts.textW14bold : AppFonts.textB14bold,
+                          style: isDarkMode
+                              ? AppFonts.textW14bold
+                              : AppFonts.textB14bold,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],

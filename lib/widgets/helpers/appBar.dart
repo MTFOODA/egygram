@@ -1,10 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:flutter_application_3/screens/login_screen.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/di/service_locator.dart';
 import '../../utilities/fonts_dart.dart';
 import '../../utilities/sp.dart';
 import '../../utilities/theme_provider.dart';
@@ -45,54 +44,28 @@ class CustomAppBarState extends State<CustomAppBar>
     _animationController.dispose();
     super.dispose();
   }
+
   Future<void> logout(BuildContext context) async {
     try {
-
-      debugPrint(await CacheHelper.getData('email'));
       await CacheHelper.removeData('email'); // Clear cached email
-      await CacheHelper.removeData('password'); // Clear cached password
-      await FirebaseAuth.instance.signOut();
-      debugPrint(await CacheHelper.getData('email'));
+      await CacheHelper.removeData('user');
+      // Password is never cached (security). Sign-out is handled by Supabase.
+      await sl.authRepository.signOut();
+      if (!context.mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => const LoginScreen(),
         ),
-            (Route<dynamic> route) => false,
+        (Route<dynamic> route) => false,
       );
     } catch (e) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error during logout: $e')),
       );
     }
   }
-
-  // Future<void> logout(BuildContext context) async {
-  //   try {
-  //     final email = await CacheHelper.getData('email');
-  //     debugPrint(email);
-  //     if (email != null) {
-  //       final prefs = await SharedPreferences.getInstance();
-  //       await prefs.remove('email_$email');
-  //       await prefs.remove('password_$email');
-  //     }
-  //     debugPrint("$email");
-  //
-  //     await FirebaseAuth.instance.signOut();
-  //
-  //     Navigator.pushAndRemoveUntil(
-  //       context,
-  //       MaterialPageRoute(
-  //         builder: (context) => const LoginScreen(),
-  //       ),
-  //           (Route<dynamic> route) => false,
-  //     );
-  //   } catch (e) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text('Error during logout: $e')),
-  //     );
-  //   }
-  // }
 
   void _toggleTheme() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
@@ -118,7 +91,8 @@ class CustomAppBarState extends State<CustomAppBar>
           Navigator.pop(context);
         },
       ),
-      title: Text(widget.title.tr(),style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+      title: Text(widget.title.tr(),
+          style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
       actions: [
         const SizedBox(width: 10),
         GestureDetector(

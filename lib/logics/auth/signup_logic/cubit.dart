@@ -1,21 +1,27 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/errors/error_mapper.dart';
+import '../../../../domain/repositories/auth_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_application_3/logics/auth/signup_logic/state.dart';
+import 'state.dart';
 
 class SignUpCubit extends Cubit<SignUpState> {
-  final FirebaseAuth firebaseAuth;
+  final AuthRepository _authRepository;
 
-  SignUpCubit(this.firebaseAuth) : super(SignupInitialState());
+  SignUpCubit({AuthRepository? authRepository})
+      : _authRepository = authRepository ?? sl.authRepository,
+        super(SignupInitialState());
 
-  // Sign up function
-  Future signUp(String email, String password) async {
+  Future signUp(String email, String password, String userName) async {
     emit(SignupLoadingState());
     try {
-      await firebaseAuth.createUserWithEmailAndPassword(
-          email: email, password: password);
+      await _authRepository.signUp(
+        email: email,
+        password: password,
+        userName: userName,
+      );
       emit(SignupSuccessState());
     } catch (e) {
-      emit(SignupErrorState(e.toString()));
+      emit(SignupErrorState(friendlyAuthError(e)));
     }
   }
 }

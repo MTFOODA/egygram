@@ -45,7 +45,10 @@ class PostUIWidgetState extends State<PostUIWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text("Create New Post".tr(), style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+                Text("Create New Post".tr(),
+                    style: isDarkMode
+                        ? AppFonts.textW24bold
+                        : AppFonts.textB24bold),
                 const SizedBox(height: 20),
                 IconButton(
                   icon: const Icon(Icons.add_photo_alternate_outlined),
@@ -121,7 +124,10 @@ class PostUIWidgetState extends State<PostUIWidget> {
                     height: 50,
                     decoration: customContainerDecoration(),
                     child: Center(
-                      child: Text("Create".tr(), style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+                      child: Text("Create".tr(),
+                          style: isDarkMode
+                              ? AppFonts.textW24bold
+                              : AppFonts.textB24bold),
                     ),
                   ),
                 ),
@@ -134,7 +140,7 @@ class PostUIWidgetState extends State<PostUIWidget> {
             child: Padding(
               padding: const EdgeInsets.only(top: 300.0),
               child: Container(
-                color:  AppColors.lightGrey,
+                color: AppColors.lightGrey,
                 child: Lottie.asset(
                   'assets/lottie/load2.json', // Path to your Lottie file
                   width: 150,

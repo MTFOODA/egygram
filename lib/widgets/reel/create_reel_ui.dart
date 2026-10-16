@@ -40,14 +40,20 @@ class ReelUIWidgetState extends State<ReelUIWidget> {
           padding: const EdgeInsets.all(20.0),
           child: Column(
             children: [
-              Text("Create New Reel".tr(), style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+              Text("Create New Reel".tr(),
+                  style:
+                      isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
               const SizedBox(height: 20),
-              ElevatedButton(
+              IconButton(
+                icon: const Icon(Icons.add_photo_alternate_outlined),
+                iconSize: 50,
+                tooltip: 'Add Medias'.tr(),
                 onPressed: widget.onVideoPick,
-                child: Text('Select Video'.tr()),
               ),
+              const SizedBox(height: 20),
               if (widget.selectedVideo != null)
-                Text("${"Video Selected:".tr()} + ${widget.selectedVideo!.name}",
+                Text(
+                  "${"Video Selected:".tr()} + ${widget.selectedVideo!.name}",
                 ),
               const SizedBox(height: 10),
               Form(
@@ -58,7 +64,7 @@ class ReelUIWidgetState extends State<ReelUIWidget> {
                     TextFormField(
                       style: AppFonts.textB24bold,
                       controller: widget.descriptionController,
-                      maxLines: 3,
+                      maxLines: 2,
                       decoration: emailInputDecoration(
                         context,
                         'Description'.tr(),
@@ -90,7 +96,10 @@ class ReelUIWidgetState extends State<ReelUIWidget> {
                   height: 50,
                   decoration: customContainerDecoration(),
                   child: Center(
-                    child: Text("Create".tr(), style: isDarkMode ? AppFonts.textW24bold : AppFonts.textB24bold),
+                    child: Text("Create".tr(),
+                        style: isDarkMode
+                            ? AppFonts.textW24bold
+                            : AppFonts.textB24bold),
                   ),
                 ),
               ),
@@ -102,7 +111,7 @@ class ReelUIWidgetState extends State<ReelUIWidget> {
             child: Padding(
               padding: const EdgeInsets.only(top: 300.0),
               child: Container(
-                color:  AppColors.lightGrey,
+                color: AppColors.lightGrey,
                 child: Lottie.asset(
                   'assets/lottie/load1.json', // Path to your Lottie file
                   width: 150,

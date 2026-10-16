@@ -1,10 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_3/models/post_model.dart';
 import 'package:flutter_application_3/widgets/post/create_post_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/utils/media_upload_helper.dart';
 import '../../logics/post/create_post_logic/cubit.dart';
 import '../../logics/post/create_post_logic/state.dart';
 import '../../screens/navigation_screen.dart';
@@ -64,8 +64,7 @@ class CreatePost extends StatelessWidget {
                 List<String> uploadedImageUrls =
                     await uploadPostImages(selectedPostImages, userName);
 
-                String postId =
-                    FirebaseFirestore.instance.collection('Posts').doc().id;
+                String postId = MediaUploadHelper.newId();
 
                 context.read<CreatePostCubit>().createPost(
                       PostsModel(

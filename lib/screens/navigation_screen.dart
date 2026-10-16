@@ -9,7 +9,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../logics/love/create_love_logic/cubit.dart';
 import '../logics/love/get_love_logic/cubit.dart';
 import '../logics/post/get_post_logic/cubit.dart';
-import '../logics/reel/get_reel_logic/cubit.dart';
 import '../logics/save/create_save_logic/cubit.dart';
 import '../logics/save/get_save_logic/cubit.dart';
 import '../logics/story/get_story_logic/cubit.dart';
@@ -36,17 +35,16 @@ class NavigationScreenState extends State<NavigationScreen> {
     currentIndex = widget.initialIndex;
 
     pages = [
-      MultiBlocProvider(
-          providers: [
-            BlocProvider(create: (context) => GetPostCubit()..subscribeToPosts()),
-            BlocProvider(create: (context) => GetUserCubit()..getUsers()),
-            BlocProvider(create: (context) => GetStoryCubit()..subscribeToStories()),
-            BlocProvider(create: (context) => GetLoveCubit()),
-            BlocProvider(create: (context) => CreateLoveCubit()),
-            BlocProvider(create: (context) => GetSaveCubit()),
-            BlocProvider(create: (context) => CreateSaveCubit()),
-          ],
-          child: HomePage(currentUser: widget.userName)),
+      MultiBlocProvider(providers: [
+        BlocProvider(create: (context) => GetPostCubit()..subscribeToPosts()),
+        BlocProvider(create: (context) => GetUserCubit()..getUsers()),
+        BlocProvider(
+            create: (context) => GetStoryCubit()..subscribeToStories()),
+        BlocProvider(create: (context) => GetLoveCubit()),
+        BlocProvider(create: (context) => CreateLoveCubit()),
+        BlocProvider(create: (context) => GetSaveCubit()),
+        BlocProvider(create: (context) => CreateSaveCubit()),
+      ], child: HomePage(currentUser: widget.userName)),
       BlocProvider(
           create: (context) => GetUserCubit()..getUsers(),
           child: SearchPage(currentUser: widget.userName)),
@@ -71,7 +69,6 @@ class NavigationScreenState extends State<NavigationScreen> {
       body: pages[currentIndex],
       bottomNavigationBar: CustomNavigationBar(
         onTap: onNavigationItemTapped,
-        currentIndex: currentIndex,
       ),
     );
   }
